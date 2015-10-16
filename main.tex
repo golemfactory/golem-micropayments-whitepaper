@@ -2,6 +2,8 @@
 \usepackage{fullpage}
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
+\usepackage{amsthm}
+\usepackage{amsmath}
 
 \usepackage{lmodern}
 
@@ -11,6 +13,10 @@
 
 \title{A Probabilistic Micropayment Scheme for Golem}
 \author{Golem Team (\texttt{golem@imapp.pl})}
+
+\newtheorem*{dfnt}{Definition}
+
+\newtheorem*{exmp}{Example}
 
 \begin{document}
 \maketitle
@@ -40,6 +46,178 @@
   lottery used to reward recipients. In the proposed payment scheme,
   the estimated cost of ...\marginpar{dokończyć zdanie}
 \end{abstract}
+
+\section{Introduction}
+\section{Micropayments schemes for cryptocurrencies}
+\section{Probabilistic payments schemes}
+\section{Ethereum}
+\section{Lottery}
+\section{Optimistic approach}
+\section{The problem of 256 past blocks}
+\section{Lottery agents}
+\section{Lottery Protocol Specification}
+\section{Cost comparison}
+\section{Source of randomness for the Lottery implementation}
+\section{Conclusion}
+\begin{thebibliography}{9}
+\bibitem{MER08} 
+\end{thebibliography}
+\appendix
+\section{Dictionary}
+\section{Contract code}
+\section{Lottery description}
+Here we show how to store lottery data in a Merkle tree, so that the contract can verify that a specified payee
+is indeed the winner in the number of steps proportional to the logarithm of the number of payees.
+We assume a fixed cryptographic hash function [ref] that will be used for the payment protocol.
+For a binary string $B$, $hash(B)$ will denote the result of the hash function applied to $B$.
+For a sequence $B_1, ..., B_n$ of binary strings, $hash(B_1, ..., B_n)$ will denote the the result of the hash function
+applied to the concatenation of $B_1, ..., B_n$. In the concrete Ethereum implementation SHA-3 with 256-bit output
+will be used.
+
+In the following we assume that the task computation may be divided to at most $2^S$ subcomputations or, in other words,
+ that the payment to each payee is a multiple of $V/2^S$, where $V$ is the value of the whole task.
+ A large value of $S$ will allow us to split the task in a fine grained subtasks but will make the lottery description
+ bigger.
+
+Let N be the number of payees and, for each $i$ in $\{1, .. N\}$, let $r_i$ be such that the value due to the $i$-th
+payee is
+
+\begin{displaymath}
+v_i = r_i \cdot \frac{V}{2^S},
+\end{displaymath}
+
+that is
+
+\begin{displaymath}
+r_i = 2^S \cdot \frac{v_i}{V}.
+\end{displaymath}
+
+Since $\sum_i v_i = V$, we also have $\sum_i r_i = 2^S$.
+
+For each $i$ in $\{1, ..., N\}$, let $R_i$ denote the $\sum_{j<i} r_i$.
+
+Given a number $x$ in $\{0, 1 ,... ,2^S-1\}$, the winner of the lottery is the unique index $i$ in $\{1, ..., N\}$
+such that
+\begin{displaymath}
+R_i \leq x < R_i+r_i.
+\end{displaymath}
+
+\begin{exmp}[with S=3, N=5]
+Let $r_1 = 2$, $r_2 = 3$, $r_3 = 1$ and $r_4 = 2$. Then we have $R_1 = 0$, $R_2 = 2$, $R_3 = 5$ and $R_4 = 6$.\\
+Now, 
+\begin{displaymath}
+\begin{array}{c}
+1 \text{ wins if} \quad 0 \leq x < 2\\
+2 \text{ wins if} \quad 2 \leq x < 5\\
+3 \text{ wins if} \quad 5 \leq x < 6\\
+4 \text{ wins if} \quad 6 \leq x < 8
+\end{array}
+\end{displaymath}
+\end{exmp}
+
+\begin{dfnt}[lottery description]
+A \textbf{lottery description} $L$ is a data structure that contains all relevant data for a lottery instance, such as the address of the Golem node that announces the lottery, a timestamp (which together uniquely identify a lottery), task value $V$, the list of payee addresses $a_1,\,\ldots,\, a_N$ and the corresponding list $p_1, \,\ldots,\, p_N $of probabilities of winning the lottery for each of the payees. $L$ may also contain some other data required by the implementation, the exact details are not relevant. We assume that all parties agree on the format used for lottery descriptions and are able to verify that L is valid. By $B(L)$ we denote the binary representation of $L$ (ie encoding of $L$ as a sequence of bits).
+\end{dfnt}
+
+
+\begin{dfnt}[payment list]
+A payment list for $L$ is a sequence $P(L) = ((a_1, R_1, r_1), \,\ldots, (a_N, R_N, r_N))$ where the values $R_1,\,\ldots,\, R_N$ and $r_1,\,\ldots,\, r_N$ are computed from task value $V$ and probabilities $p_1,\,\ldots,\,p_N$ as described above. To restrict our attention we assume that $R_i$ and $r_i$ are 32 bit words (thus $S = 32$). The definitions below can be adjusted to other values of $S$ in a straightforward way.
+\end{dfnt}
+
+Now, in order to verify that $a_i$ is the winner of a lottery described by $L$ for a given random value $R$, one has to
+make sure that $P(L)$ contains a tuple $(a_i, R_i, r_i)$ such that $R_i \leq R < R_i + r_i$ holds.
+This can be done by proposing the tuple $(a_i, R_i, r_i)$ and:
+\begin{enumerate}
+\item checking that it satisfies the required inequalities,
+\item proving that it is an element of $P(L)$.
+\end{enumerate}
+
+(1) is trivial and (2) can be done by iterating over $P(L)$ until $(a_i, R_i, r_i)$ is found. However,
+doing so in the lottery contract would require sending whole $P(L)$ in a message (or half of $P(L)$ on average,
+if the triples in $P(L)$ are sorted) which would incur a substantial cost for the sender. Fortunately, the verification
+may be performed in the number of steps and with the size of data proportional to the logarithm of $N$ by encoding
+information in $P(L)$ in a Merkle tree, that is a full binary tree in which every inner node is labelled by the hash
+of the labels of its children.
+
+In the following we make use of the standard identification of binary trees with nonempty prefix-closed sets
+of sequences over $\{0,1\}$. That is, $T \subseteq \{0,1\}^*$ is a binary tree if $T \neq \empty$ and for every
+$n \in \{0,1\}^*$ and $b \in \{0,1\}$, if $nb \in T$ then $n \in T$. Here, the empty sequence is the root of $T$ and $n0$
+ and $n1$ are the left and the right child of $s$,respectively.
+ $T$ is full if every inner node has two children, that is if for every $n \in T$ we have $n0 \in T \iff n1 \in T$.
+ A labelled binary tree is a binary tree $T$ and a function $l$ from $T$ to some fixed set of labels.
+ Finally, a Merkle tree is a labelled full binary tree $(T, l)$ with the labelling function $l:\; T \rightarrow \{0,1\}^{256}$ satisfying:
+ \begin{displaymath}
+l(n) = hash(l(n0), l(n1))
+\end{displaymath}
+for every $n \in \{0,1\}^*$ such that $n0 \in T$.
+
+A pleasant property of Merkle trees is that to prove that a given tree contains a node with specific label $w$ we only
+need to examine the amount of data proportional to $\log(d)$, where $d$ is the depth of the specified node.
+
+Let us fix a Merkle tree $T$ and a node $n = b_1,\,\ldots,\,b_d$ with label $w = l(n)$ and let $w_1,\,\ldots,\,w_d$
+be a sequence of 256 bit words such that for each $i \in \{1,\,\ldots,\,d\}$, if $b_i = 0 then w_i is the label of the right child of the node b_1, ..., b_{i-1} and otherwise w_i is the label of its left child (that is, w_i = l(b_1, ..., b_{i-1}, 1 - b_i)).
+
+%Let h_0, ..., h_d denote the labels of the nodes on  the path from the root to n. That is, h_0 is the label of the root, h_d = w and in general, h_i = l(b_1, ..., b_i). From the property of Merkle trees we have, for every i \in {1, ..., d}:
+%if b_i = 0 then h_{i-1} = hash(h_i, w_i)
+%if b_i = 1 then h_{i-1} = hash(w_i, h_i)
+%This means that given n, w and w_1, ..., w_d we may compute the values of h_i, starting from h_d = w and climbing the tree up to h_0 which is the label of the root. Since hash is assumed to be collision resistant ([refs]), finding n, w and w_1, ..., w_d for which the above procedure yields the given hash value h_0 is considered extremely difficult. Therefore, for all practical purposes, proposing the values n, w, w_1, ... , w_d, computing the hash h_0 and checking that it is equal to the label in the root of a Merkle tree T is considered a valid proof of n being a node in T labelled with w.
+%
+%The above definitions are illustrated in Fig. X which shows a Merkle tree with a distinguished node n = 010. The label w of n,  together with labels w_3, w_2 and w_1, is used to compute hashes h_3, ..., h_0.
+%
+%Now, going back the lottery setting, a Merkle tree for a lottery description L is a Merkle tree with minimal height such that for every (ai, Ri, ri) in P(L) there exists a leaf labelled with hash(ai, Ri, ri). This definition allows many different Merkle trees for a given L, so we assume that all lottery participants agree on a common algorithm that builds a "canonical" tree M(L) for each L, so that every payee may construct M(L) after receiving L. Alternatively, the sender may send a tree for L together with L to each payee.
+%Note that the height of any Merkle tree for L, that is the maximum depth of any leaf, is equal to ceiling(log2 P).
+%
+%Now, a hash of L is defined as h(L) = hash(hash(B(L)), h(M(L))), where B(L) is the binary encoding of L and h(M(L)) is the label of the root of M(L).
+%
+%A winner certificate C = (a, R, r, b_1, ..., b_d, w_1, ..., w_d) consists of
+%160-bit word a (address of the proposed winner),
+%32-bit words R and r,
+%a sequence b_1, ..., b_d of bits, with d >= 0,
+%a sequence w_1, ..., w_d of 256-bit words.
+%Given C we define h_d = hash(a, R, r) and, for i = 1, .., d, h_{i-1} = hash(h_i, w_i) if b_i = 0 and h_{i-1} = hash(w_i, h_i) otherwise.
+%Let x be a 32-bit random value. C is valid for s if
+%R <= x < R + r  and  hash(hash(B(L)), h_0) = h(L).
+%
+%In our concrete implementation a winner certificate is represented by the following Solidity struct:
+%
+%struct WinnerCertificate {
+%   address winner;     // winner's address
+%   uint32 rangeStart;  // beginning of the range
+%   uint32 rangeLength; // length of the range
+%   bool[] path;        // encoding of the leaf as a sequence b_1, ..., b_d
+%   bytes32[] values;   // values w_1, ..., w_d
+%}
+%
+%The algorithm that checks the validity of a certificate may be coded as the following Solidity function, in which rand is the random value (x in the description above), lotteryHash is h(L) and descriptionHash is hash(B(L)):
+%
+%function checkCertificate(uint32 rand, bytes32 lotteryHash, bytes32 descriptionHash, WinnerCertificate cert)
+%internal returns (bool)
+%{
+%    // Check if random val falls into the range
+%    if (rand < cert.rangeStart || rand >= cert.rangeStart + cert.rangeLength)
+%        return false;
+%
+%    // Initially, h is the value stored in the leaf (h_d)
+%    bytes32 h = bytes32(uint256(cert.winner) << 64
+%                      + uint256(cert.rangeStart) << 32
+%                      + cert.rangeLength
+%                );
+%
+%    // Update h with hashes h_(d-1), ..., h_0
+%    for (uint i = cert.path.length; i > 0; i--) {
+%        if (cert.path[i-1] == false)
+%            h = sha3(h, cert.values[i-1]);
+%        else
+%            h = sha3(cert.values[i-1], h);
+%    }
+%    // Mix with description hash
+%    h = sha3(desriptionHash, h);
+%
+%    return h == lotteryHash;
+%}
+%
+
+\section{Probabilities}
 
 \begin{figure}
   \include{merkle}
