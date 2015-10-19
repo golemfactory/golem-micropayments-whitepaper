@@ -4,7 +4,7 @@
 \usepackage[utf8]{inputenc}
 \usepackage{amsthm}
 \usepackage{amsmath}
-
+\usepackage{hyperref}
 \usepackage{lmodern}
 
 % For TikZ diagrams:
@@ -17,39 +17,131 @@
 \newtheorem*{dfnt}{Definition}
 
 \newtheorem*{exmp}{Example}
+\setlength{\parskip}{.6em}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-  We consider a setting where a transaction is made by a single payer
-  to a possibly large group of recipients, each receiving only a small
-  sum in the order of \$$0.01$. For such small sums transaction fees are
-  relatively large even if we consider cryptocurrencies instead of
-  bank-based transactions.
+    We consider a setting where a transaction is made by a single payer
+    to a possibly large group of~recipients, each receiving only a small
+    sum in the order of \$$0.01$. For such small sums transaction fees are
+    relatively large even if we consider cryptocurrencies instead of
+    bank-based transactions.
 
-  Both payers and recipients are expected to repeatedly take part in
-  many transactions, but subsequent transactions of a single payer may
-  have different, possibly disjoint, groups of recipients. Also, we
-  assume that transactions result from activities carried out in a
-  decentralized peer-to-peer network, so we would like to avoid
-  solutions relying on any trusted third party. We cannot therefore use
-  existing solutions that require a central server or assume that a
-  payer makes a series of micropayments to a single recipient (Bitcoin
-  micropayment channels).
+    Both payers and recipients are expected to repeatedly take part in
+    many transactions, but subsequent transactions of a single payer may
+    have different, possibly disjoint, groups of recipients. Also, we
+    assume that transactions result from activities carried out in a
+    decentralized peer-to-peer network, so we would like to avoid
+    solutions relying on any trusted third party. We cannot therefore use
+    existing solutions that require a central server or assume that a
+    payer makes a series of micropayments to a single recipient (Bitcoin
+    micropayment channels).
 
-  Instead, we propose a probabilistic payment scheme in which only one
-  recipient randomly chosen from a group of candidates is rewarded in
-  a single transaction. Our solution is based on Ethereum and is thus
-  decentralized and avoids relying on a trusted third party. In
-  particular, we describe an Ethereum smart contract implementing a
-  lottery used to reward recipients. In the proposed payment scheme,
-  the estimated cost of ...\marginpar{dokończyć zdanie}
+    Instead, we propose a probabilistic payment scheme in which only one
+    recipient randomly chosen from a group of candidates is rewarded in
+    a single transaction. Our solution is based on Ethereum and is thus
+    decentralized and avoids relying on a trusted third party. In
+    particular, we describe an~Ethereum smart contract implementing a
+    lottery used to reward recipients. In the proposed payment scheme,
+    the estimated cost of ...\marginpar{dokończyć zdanie}
 \end{abstract}
 
 \section{Introduction}
+
+    This work is part of research conducted in the Golem project. The aim of Golem is to create a global prosumer
+    market for computing power, in which producers may sell spare CPU time of their personal computers and consumers
+    may acquire resources for computation-intensive tasks. In technical terms, Golem is implemented as a decentralized
+    peer-to-peer network established by nodes running the Golem client software. For the purpose of this paper
+    we assume that there are two types of nodes in the~Golem network: \textbf{requester nodes} that announce computing
+    tasks and \textbf{compute nodes} that perform computations (in the actual implementation nodes may switch between
+    both roles).
+    A requester node partitions a task into multiple subtasks, specifies payment for each subtask and recruits
+    a group of compute nodes, each of which downloads and completes one subtask. This is again a simplifying
+    assumption, since in~principle a single compute node could complete multiple subtasks.
+    Results of each subtask are sent back to the requester node. After the requester node collects the results of all
+    subtasks, it performs the~payment step\footnote{In this scenario we assume that the compute nodes do not fail
+    and eventually deliver the results and the requester node is willing to perform the~payment step.
+    The first assumption may be implemented for example by ensuring each subtask is computed by more than one node
+    (in parallel or in sequence) and the second one may be enforced by a suitable reputation system for the nodes,
+    but this is outside the scope of this paper.}. This last step is the main focus of the paper.
+
+    In Golem we handle a variety of tasks with different sizes and decomposable to a different degree. In~particular:
+    \begin{itemize}
+        \item Task partitioning can range from 10 to 10000 subtasks.
+        \item Task value can range from \$1 to \$10 000.
+        \item Payment for a single subtask may be as low as \$0.01 or even \$0.001 for some types of tasks
+    \end{itemize}
+
+    The main requirement for any payment solution used in Golem is that it should be decentralized and not depend
+    on any trusted authorities (banks, brokers).
+
+
+    We should not expect that after a payment for a subtask is made, another payment with the same payer and recipient
+    will occur in a short time. That is, it may not be possible to accumulate payments made by one payer and transfer
+    the larger sum using a single transaction. On the other hand, we may consider methods that assume recurring
+    payments to a single payee. That is, a compute node does not necessarily have to be paid a tiny sum for each
+    subtask but instead may be paid larger sums once in a while. The obvious requirement is that in the long run
+    the node's income should approach the sum of subtask’s values that this node has computed.
+
+    Thus we are looking for a micropayments solution that handles payments as small as \$0.01 with transaction fees
+    in the order of \$0.0001 per payment (this does not necessarily mean \$0.0001 per transaction which may group many
+    payments). This rules out traditional methods such as bank-based transactions, credit card transactions or PayPal,
+    since transaction fees they incur are in the order of \$0.1, plus a percentage of the transaction value
+    (see eg \cite{FRS}).
+    It seems more promising to look at available micropayment schemes based on digital currencies such
+    as Bitcoin \cite{BITCOIN}.
+
 \section{Micropayments schemes for cryptocurrencies}
+
+    We first consider a naive solution in which the requester pays each node participating in the computation
+    with a separate Bitcoin transaction. Although Bitcoin transaction fees are lower than for bank-based transactions,
+    a transaction smaller than 0.01 BTC ($\sim$ \$2.5 at the moment of this writing) requires a fee of
+    0.0001 BTC ($\sim$ \$0.025) to discourage "dust" transactions that bloat the Bitcon blockchain \cite{BITFEE}.
+    Such a fee may thus be be higher than the transaction value.
+
+    A Bitcoin transaction may include many outputs, each to a different recipient, which seems a good match for
+    one-to-many payments. We can therefore consider making a single Bitcoin transaction with a separate output
+    for each of the participants. In this case, the flat fee of 0.00001 BTC for "dust" transactions applies only
+    once to the whole transaction, so this is not an issue. However, the size of the transaction in bytes grows with
+    each output and Bitcoin also has fees for large transactions: the default charge is 0.0001 BTC per 1000 bytes.
+    Using the formula for approximating transaction size from http://bitcoinfees.com/\cite{BITFEE}:
+    \begin{displaymath}
+	    \text{\texttt{transaction\_size}} = 148 * \text{\texttt{number\_of\_inputs}} +
+	    34 * \text{\texttt{number\_of\_outputs}} + 10.
+	\end{displaymath}
+    We may estimate that a transaction with 100 payees will cost at least \$0.1 and the cost will rise as the coins
+    become fragmented and require a large number of inputs. However, as fees in Bitcoin are market-based rather than
+    hardcoded, miners may at some point start requiring higher fees for processing transactions \cite{KASKALOGLU}.
+    According to some estimates (\cite{ANDRESEN}) miners should require a fee of
+    at least 0.0032 BTC ($\sim$ \$0.8) for including each 1000 bytes in a block), to compensate for the fact that
+    a larger block is more likely to be orphaned. Finally, we should point out that a receiver of "dust" payments will
+    bear the cost of spending the tiny coins she receives, due to higher fees for transactions with large number of
+    inputs. This may discourage potential users from participating in Golem. For these reasons, Bitcoin transactions
+    with multiple outputs may be suitable for tasks with a relatively high value (say above \$10) or small number
+    of participants. For other scenarios a different payment scheme has to be used.
+
+    For completeness we also mention Bitcoin micropayment channels (\cite{BITCOINJ}), but this solution does not fit
+    our setting as it assumes that a payer makes a series of micropayments to one recipient.
+    There is also a number of custom micropayment solutions such as Coinbase Tip \cite{COINTIP}(no longer active),
+    or ChangeTip \cite{CHANGETIP} but they rely on a trusted third-party that processes transactions off-chain,
+    which we definitely want to avoid in Golem.
+
+
 \section{Probabilistic payments schemes}
+    We next turn our attention to probabilistic payment schemes. The idea is that instead of paying \$0.01 directly,
+    the payer issues a "lottery ticket" for a lottery with \$1 prize with a $1/100$ chance of winning. The expected
+    value of such ticket is \$0.01. The advantage is that on average only one ticket in 100 will lead to an actual
+    transaction. Such scheme is proposed eg in [https://people.csail.mit.edu/rivest/pubs/Riv97b.pdf] and [http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.44.757&rep=rep1&type=pdf]. A possible implementation of this scheme may use cryptographic hash functions, for example SHA-3. First, both the payer and the recipient draw (or choose) their numbers n_P and n_R, respectively. Both parties initially keep their numbers secret. Then the recipient reveals hash(n_R). In the next step, the payer reveals hash(n_P). Finally, both parties reveal their numbers (in any order) and use them to decide if the recipient receives the prize: the recipient wins if and only if n_P = n_R mod N, where 1/N is the probability of winning. Note that even if the recipient learns n_P before revealing n_R, she cannot change her choice of n_R since she committed to the original choice by revealing hash(n_R) and it is considered infeasible to find another number with the same hash.
+
+Obviously, this probabilistic procedure does not guarantee that the Golem node is fairly remunerated if it only takes part in a small number of tasks. However, as the number of tasks increases, the node's real income from lottery rewards will approach the amount she would get being paid for each task. For the requester node the situation is similar, but the probabilistic effects may be more problematic: suppose a requester node just joined Golem and now has to pay for its first task to 100 other nodes with tickets giving each receiver 1/100 chance of winning the total task value. Now, since each ticket is evaluated independently, there is a 37% chance that the requester will not have to pay anything but also a substantial 26% chance that at least two tickets win, and almost 2% chance that at least 4 tickets win. Therefore the requester should be prepared to pay 4 times more than expected,
+which may discourage users from joining Golem.
+
+We can modify this scheme to make it more predictable for the requester by ensuring that among the tickets issued to reward the participants of a single task, exactly one ticket is winning. For example, if there are 100 participants then each of them has 1/100 chance of winning, as before, but the requester has guarantee that task value will have to be paid only once. In other words, after the task is completed the requester will have to organize a lottery for the participants, in which exactly one participant wins. The drawback of this approach is that it requires a protocol that involves a large group of participants: the payer and all the payees. Such a protocol is more complex than in a one-to-one scenario where each lottery ticket is evaluated separately.
+
+In the rest of this paper we describe and compare several possible payment schemes (most of them briefly) in the context of Ethereum platform.
+
 \section{Ethereum}
 \section{Lottery}
 \section{Optimistic approach}
@@ -60,171 +152,232 @@
 \section{Source of randomness for the Lottery implementation}
 \section{Conclusion}
 \begin{thebibliography}{9}
-\bibitem{MER08} 
+\bibitem{ANDRESEN} Andresen, Gavin. "Back-of-the-envelope calculations for marginal cost of transactions",
+    \url{https://gist.github.com/gavinandresen/5044482}.
+\bibitem{BITCOIN} Nakamoto, Satoshi. \textit{"Bitcoin A Peer-to-Peer Electronic Cash System"},
+    \url{https://bitcoin.org/bitcoin.pdf}, 2008.
+\bibitem[BITCOINJ] "Working with micropayment channels", \url{https://bitcoinj.github.io/working-with-micropayments}.
+\bibitem{BITFEE} "Bitcoin Transaction Fees Explained" webpage, \url{http://bitcoinfees.com/},  last update 2014.
+\bibitem{CHANGETIP} ChangeTip website, \url{https://www.changetip.com/}.
+\bibitem{COINTIP} "Shutting Down Coinbase Tip Button",
+    \url{https://blog.coinbase.com/2015/02/10/shutting-down-the-coinbase-tip-button/}, 2015.
+\bibitem{KASKALOGLU}Kaşkaloğlu, Kerem, "Near Zero Bitcoin Transaction Fees Cannot Last Forever",
+    \url{http://sdiwc.net/digital-library/near-zero-bitcoin-transaction-fees-cannot-last-forever.html},
+    The International Conference on Digital Security and Forensic(DigitalSec2014), 91-99, June, 2014.
+\bibitem{FRS} Board of Governors of the Federal Reserve System, Press Release,
+    \url{http://www.federalreserve.gov/newsevents/press/bcreg/20110629a.htm}, June 29, 2011.
+\bibitem{SHA3} FEDERAL INFORMATION PROCESSING STANDARDS PUBLICATION,
+    \textit{"SHA-3 Standard: Permutation-Based Hash and Extendable Output Functions"}, FIPS PUB 202,
+    \url{http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf}.
 \end{thebibliography}
 \appendix
 \section{Dictionary}
 \section{Contract code}
 \section{Lottery description}
-Here we show how to store lottery data in a Merkle tree, so that the contract can verify that a specified payee
-is indeed the winner in the number of steps proportional to the logarithm of the number of payees.
-We assume a fixed cryptographic hash function [ref] that will be used for the payment protocol.
-For a binary string $B$, $hash(B)$ will denote the result of the hash function applied to $B$.
-For a sequence $B_1, ..., B_n$ of binary strings, $hash(B_1, ..., B_n)$ will denote the the result of the hash function
-applied to the concatenation of $B_1, ..., B_n$. In the concrete Ethereum implementation SHA-3 with 256-bit output
-will be used.
+    Here we show how to store lottery data in a Merkle tree, so that the contract can verify that a specified payee
+    is indeed the winner in the number of steps proportional to the logarithm of the number of payees.
+    We assume a fixed cryptographic hash function [ref] that will be used for the payment protocol.
+    For a binary string $B$, $hash(B)$ will denote the result of the hash function applied to $B$.
+    For a sequence $B_1, ..., B_n$ of binary strings, $hash(B_1, ..., B_n)$ will denote the the result of
+    the hash function applied to the concatenation of $B_1, ..., B_n$. In the concrete Ethereum implementation SHA-3
+    with 256-bit output will be used.
 
-In the following we assume that the task computation may be divided to at most $2^S$ subcomputations or, in other words,
- that the payment to each payee is a multiple of $V/2^S$, where $V$ is the value of the whole task.
- A large value of $S$ will allow us to split the task in a fine grained subtasks but will make the lottery description
- bigger.
+    In the following we assume that the task computation may be divided to at most $2^S$ subcomputations or,
+    in other words, that the payment to each payee is a multiple of $V/2^S$, where $V$ is the value of the whole task.
+    A large value of $S$ will allow us to split the task in a fine grained subtasks but will make the lottery
+    description bigger.
 
-Let N be the number of payees and, for each $i$ in $\{1, .. N\}$, let $r_i$ be such that the value due to the $i$-th
-payee is
+    Let $N$ be the number of payees and, for each $i$ in $\{1, .. N\}$, let $r_i$ be such that the value due to
+    the $i$-th payee is
 
-\begin{displaymath}
-v_i = r_i \cdot \frac{V}{2^S},
-\end{displaymath}
+    \begin{displaymath}
+        v_i = r_i \cdot \frac{V}{2^S},
+    \end{displaymath}
 
-that is
+    that is
 
-\begin{displaymath}
-r_i = 2^S \cdot \frac{v_i}{V}.
-\end{displaymath}
+    \begin{displaymath}
+        r_i = 2^S \cdot \frac{v_i}{V}.
+    \end{displaymath}
 
-Since $\sum_i v_i = V$, we also have $\sum_i r_i = 2^S$.
+    Since $\sum_i v_i = V$, we also have $\sum_i r_i = 2^S$.
 
-For each $i$ in $\{1, ..., N\}$, let $R_i$ denote the $\sum_{j<i} r_i$.
+    For each $i$ in $\{1, ..., N\}$, let $R_i$ denote the $\sum_{j<i} r_i$.
 
-Given a number $x$ in $\{0, 1 ,... ,2^S-1\}$, the winner of the lottery is the unique index $i$ in $\{1, ..., N\}$
-such that
-\begin{displaymath}
-R_i \leq x < R_i+r_i.
-\end{displaymath}
+    Given a number $x$ in $\{0, 1 ,... ,2^S-1\}$, the winner of the lottery is the unique index $i$ in $\{1, ..., N\}$
+    such that
+    \begin{displaymath}
+        R_i \leq x < R_i+r_i.
+    \end{displaymath}
 
-\begin{exmp}[with S=3, N=5]
-Let $r_1 = 2$, $r_2 = 3$, $r_3 = 1$ and $r_4 = 2$. Then we have $R_1 = 0$, $R_2 = 2$, $R_3 = 5$ and $R_4 = 6$.\\
-Now, 
-\begin{displaymath}
-\begin{array}{c}
-1 \text{ wins if} \quad 0 \leq x < 2\\
-2 \text{ wins if} \quad 2 \leq x < 5\\
-3 \text{ wins if} \quad 5 \leq x < 6\\
-4 \text{ wins if} \quad 6 \leq x < 8
-\end{array}
-\end{displaymath}
-\end{exmp}
+    \begin{exmp}[with S=3, N=5]
+        Let $r_1 = 2$, $r_2 = 3$, $r_3 = 1$ and $r_4 = 2$. Then we have $R_1 = 0$, $R_2 = 2$, $R_3 = 5$ and $R_4 = 6$.\\
+        Now,
+        \begin{displaymath}
+            \begin{array}{c}
+                1 \text{ wins if} \quad 0 \leq x < 2\\
+                2 \text{ wins if} \quad 2 \leq x < 5\\
+                3 \text{ wins if} \quad 5 \leq x < 6\\
+                4 \text{ wins if} \quad 6 \leq x < 8
+            \end{array}
+        \end{displaymath}
+    \end{exmp}
 
-\begin{dfnt}[lottery description]
-A \textbf{lottery description} $L$ is a data structure that contains all relevant data for a lottery instance, such as the address of the Golem node that announces the lottery, a timestamp (which together uniquely identify a lottery), task value $V$, the list of payee addresses $a_1,\,\ldots,\, a_N$ and the corresponding list $p_1, \,\ldots,\, p_N $of probabilities of winning the lottery for each of the payees. $L$ may also contain some other data required by the implementation, the exact details are not relevant. We assume that all parties agree on the format used for lottery descriptions and are able to verify that L is valid. By $B(L)$ we denote the binary representation of $L$ (ie encoding of $L$ as a sequence of bits).
-\end{dfnt}
+    \begin{dfnt}[lottery description]
+        A \textbf{lottery description} $L$ is a data structure that contains all relevant data for a lottery instance,
+        such as the address of the Golem node that announces the lottery, a timestamp (which together uniquely identify
+        a lottery), task value $V$, the list of payee addresses $a_1,\,\ldots,\, a_N$ and the corresponding list
+        $p_1, \,\ldots,\, p_N $of probabilities of winning the lottery for each of the payees. $L$ may also contain
+        some other data required by the implementation, the exact details are not relevant. We assume that all parties
+        agree on the format used for lottery descriptions and are able to verify that L is valid. By $B(L)$ we denote
+        the binary representation of $L$ (ie encoding of $L$ as a sequence of bits).
+    \end{dfnt}
 
 
-\begin{dfnt}[payment list]
-A payment list for $L$ is a sequence $P(L) = ((a_1, R_1, r_1), \,\ldots, (a_N, R_N, r_N))$ where the values $R_1,\,\ldots,\, R_N$ and $r_1,\,\ldots,\, r_N$ are computed from task value $V$ and probabilities $p_1,\,\ldots,\,p_N$ as described above. To restrict our attention we assume that $R_i$ and $r_i$ are 32 bit words (thus $S = 32$). The definitions below can be adjusted to other values of $S$ in a straightforward way.
-\end{dfnt}
+    \begin{dfnt}[payment list]
+        A \textbf{payment list} for $L$ is a sequence $P(L) = ((a_1, R_1, r_1), \,\ldots, (a_N, R_N, r_N))$ where the values
+        $R_1,\,\ldots,\, R_N$ and $r_1,\,\ldots,\, r_N$ are computed from task value $V$ and probabilities
+        $p_1,\,\ldots,\,p_N$ as described above. To restrict our attention we assume that $R_i$ and $r_i$ are 32 bit
+        words (thus $S = 32$). The definitions below can be adjusted to other values of $S$ in a straightforward way.
+    \end{dfnt}
 
-Now, in order to verify that $a_i$ is the winner of a lottery described by $L$ for a given random value $R$, one has to
-make sure that $P(L)$ contains a tuple $(a_i, R_i, r_i)$ such that $R_i \leq R < R_i + r_i$ holds.
-This can be done by proposing the tuple $(a_i, R_i, r_i)$ and:
-\begin{enumerate}
-\item checking that it satisfies the required inequalities,
-\item proving that it is an element of $P(L)$.
-\end{enumerate}
+    Now, in order to verify that $a_i$ is the winner of a lottery described by $L$ for a given random value $R$,
+    one has to make sure that $P(L)$ contains a tuple $(a_i, R_i, r_i)$ such that $R_i \leq R < R_i + r_i$ holds.
+    This can be done by proposing the tuple $(a_i, R_i, r_i)$ and:
+    \begin{enumerate}
+        \item checking that it satisfies the required inequalities,
+        \item proving that it is an element of $P(L)$.
+    \end{enumerate}
 
-(1) is trivial and (2) can be done by iterating over $P(L)$ until $(a_i, R_i, r_i)$ is found. However,
-doing so in the lottery contract would require sending whole $P(L)$ in a message (or half of $P(L)$ on average,
-if the triples in $P(L)$ are sorted) which would incur a substantial cost for the sender. Fortunately, the verification
-may be performed in the number of steps and with the size of data proportional to the logarithm of $N$ by encoding
-information in $P(L)$ in a Merkle tree, that is a full binary tree in which every inner node is labelled by the hash
-of the labels of its children.
+    (1) is trivial and (2) can be done by iterating over $P(L)$ until $(a_i, R_i, r_i)$ is found. However,
+    doing so in the lottery contract would require sending whole $P(L)$ in a message (or half of $P(L)$ on average,
+    if the triples in $P(L)$ are sorted) which would incur a substantial cost for the sender. Fortunately,
+    the verification may be performed in the number of steps and with the size of data proportional to the logarithm
+    of $N$ by encoding information in $P(L)$ in a \textbf{Merkle tree}, that is a full binary tree in which every inner node
+    is labelled by the hash of the labels of its children.
 
-In the following we make use of the standard identification of binary trees with nonempty prefix-closed sets
-of sequences over $\{0,1\}$. That is, $T \subseteq \{0,1\}^*$ is a binary tree if $T \neq \empty$ and for every
-$n \in \{0,1\}^*$ and $b \in \{0,1\}$, if $nb \in T$ then $n \in T$. Here, the empty sequence is the root of $T$ and $n0$
- and $n1$ are the left and the right child of $s$,respectively.
- $T$ is full if every inner node has two children, that is if for every $n \in T$ we have $n0 \in T \iff n1 \in T$.
- A labelled binary tree is a binary tree $T$ and a function $l$ from $T$ to some fixed set of labels.
- Finally, a Merkle tree is a labelled full binary tree $(T, l)$ with the labelling function $l:\; T \rightarrow \{0,1\}^{256}$ satisfying:
- \begin{displaymath}
-l(n) = hash(l(n0), l(n1))
-\end{displaymath}
-for every $n \in \{0,1\}^*$ such that $n0 \in T$.
+    In the following we make use of the standard identification of binary trees with nonempty prefix-closed sets
+    of sequences over $\{0,1\}$. That is, $T \subseteq \{0,1\}^*$ is a binary tree if $T \neq \empty$ and for every
+    $n \in \{0,1\}^*$ and $b \in \{0,1\}$, if $nb \in T$ then $n \in T$. Here, the empty sequence is the
+    root of $T$ and $n0$ and $n1$ are the left and the right child of $s$,respectively.
+    $T$ is \textbf{full} if every inner node has two children, that is if for every $n \in T$ we have $n0 \in T \iff n1 \in T$.
+    A \textbf{labelled binary tree} is a binary tree $T$ and a function $l$ from $T$ to some fixed set of labels.
+    Finally, a Merkle tree is a \textbf{labelled full binary tree} $(T, l)$ with the labelling function
+    $l:\; T \rightarrow \{0,1\}^{256}$ satisfying:
+    \begin{displaymath}
+        l(n) = hash(l(n0), l(n1))
+    \end{displaymath}
+    for every $n \in \{0,1\}^*$ such that $n0 \in T$.
 
-A pleasant property of Merkle trees is that to prove that a given tree contains a node with specific label $w$ we only
-need to examine the amount of data proportional to $\log(d)$, where $d$ is the depth of the specified node.
+    A pleasant property of Merkle trees is that to prove that a given tree contains a node with specific label $w$
+    we only need to examine the amount of data proportional to $\log(d)$, where $d$ is the depth of the specified node.
 
-Let us fix a Merkle tree $T$ and a node $n = b_1,\,\ldots,\,b_d$ with label $w = l(n)$ and let $w_1,\,\ldots,\,w_d$
-be a sequence of 256 bit words such that for each $i \in \{1,\,\ldots,\,d\}$, if $b_i = 0 then w_i is the label of the right child of the node b_1, ..., b_{i-1} and otherwise w_i is the label of its left child (that is, w_i = l(b_1, ..., b_{i-1}, 1 - b_i)).
+    Let us fix a Merkle tree $T$ and a node $n = b_1,\,\ldots,\,b_d$ with label $w = l(n)$ and let $w_1,\,\ldots,\,w_d$
+    be a sequence of 256 bit words such that for each $i \in \{1,\,\ldots,\,d\}$, if $b_i = 0$ then $w_i$ is the label
+    of the right child of the node $b_1,\,\ldots,\, b_{i-1}$ and otherwise $w_i$ is the label of its left child
+    (that is, $w_i = l(b_1, \,\ldots,\,b_{i-1}, 1 - b_i)$).
 
-%Let h_0, ..., h_d denote the labels of the nodes on  the path from the root to n. That is, h_0 is the label of the root, h_d = w and in general, h_i = l(b_1, ..., b_i). From the property of Merkle trees we have, for every i \in {1, ..., d}:
-%if b_i = 0 then h_{i-1} = hash(h_i, w_i)
-%if b_i = 1 then h_{i-1} = hash(w_i, h_i)
-%This means that given n, w and w_1, ..., w_d we may compute the values of h_i, starting from h_d = w and climbing the tree up to h_0 which is the label of the root. Since hash is assumed to be collision resistant ([refs]), finding n, w and w_1, ..., w_d for which the above procedure yields the given hash value h_0 is considered extremely difficult. Therefore, for all practical purposes, proposing the values n, w, w_1, ... , w_d, computing the hash h_0 and checking that it is equal to the label in the root of a Merkle tree T is considered a valid proof of n being a node in T labelled with w.
-%
-%The above definitions are illustrated in Fig. X which shows a Merkle tree with a distinguished node n = 010. The label w of n,  together with labels w_3, w_2 and w_1, is used to compute hashes h_3, ..., h_0.
-%
-%Now, going back the lottery setting, a Merkle tree for a lottery description L is a Merkle tree with minimal height such that for every (ai, Ri, ri) in P(L) there exists a leaf labelled with hash(ai, Ri, ri). This definition allows many different Merkle trees for a given L, so we assume that all lottery participants agree on a common algorithm that builds a "canonical" tree M(L) for each L, so that every payee may construct M(L) after receiving L. Alternatively, the sender may send a tree for L together with L to each payee.
-%Note that the height of any Merkle tree for L, that is the maximum depth of any leaf, is equal to ceiling(log2 P).
-%
-%Now, a hash of L is defined as h(L) = hash(hash(B(L)), h(M(L))), where B(L) is the binary encoding of L and h(M(L)) is the label of the root of M(L).
-%
-%A winner certificate C = (a, R, r, b_1, ..., b_d, w_1, ..., w_d) consists of
-%160-bit word a (address of the proposed winner),
-%32-bit words R and r,
-%a sequence b_1, ..., b_d of bits, with d >= 0,
-%a sequence w_1, ..., w_d of 256-bit words.
-%Given C we define h_d = hash(a, R, r) and, for i = 1, .., d, h_{i-1} = hash(h_i, w_i) if b_i = 0 and h_{i-1} = hash(w_i, h_i) otherwise.
-%Let x be a 32-bit random value. C is valid for s if
-%R <= x < R + r  and  hash(hash(B(L)), h_0) = h(L).
-%
-%In our concrete implementation a winner certificate is represented by the following Solidity struct:
-%
-%struct WinnerCertificate {
-%   address winner;     // winner's address
-%   uint32 rangeStart;  // beginning of the range
-%   uint32 rangeLength; // length of the range
-%   bool[] path;        // encoding of the leaf as a sequence b_1, ..., b_d
-%   bytes32[] values;   // values w_1, ..., w_d
-%}
-%
-%The algorithm that checks the validity of a certificate may be coded as the following Solidity function, in which rand is the random value (x in the description above), lotteryHash is h(L) and descriptionHash is hash(B(L)):
-%
-%function checkCertificate(uint32 rand, bytes32 lotteryHash, bytes32 descriptionHash, WinnerCertificate cert)
-%internal returns (bool)
-%{
-%    // Check if random val falls into the range
-%    if (rand < cert.rangeStart || rand >= cert.rangeStart + cert.rangeLength)
-%        return false;
-%
-%    // Initially, h is the value stored in the leaf (h_d)
-%    bytes32 h = bytes32(uint256(cert.winner) << 64
-%                      + uint256(cert.rangeStart) << 32
-%                      + cert.rangeLength
-%                );
-%
-%    // Update h with hashes h_(d-1), ..., h_0
-%    for (uint i = cert.path.length; i > 0; i--) {
-%        if (cert.path[i-1] == false)
-%            h = sha3(h, cert.values[i-1]);
-%        else
-%            h = sha3(cert.values[i-1], h);
-%    }
-%    // Mix with description hash
-%    h = sha3(desriptionHash, h);
-%
-%    return h == lotteryHash;
-%}
-%
+    Let $h_0,\,\ldots,\, h_d$ denote the labels of the nodes on the path from the root to $n$. That is, $h_0$ is
+    the label of the root, $h_d = w$ and in general, $h_i = l(b_1,\,\ldots,\,b_i)$. From the property of Merkle trees
+    we have, for every $i \in \{1,\,\ldots,\,d\}$:
+    \begin{itemize}
+        \item if $b_i = 0$ then $h_{i-1} = hash(h_i, w_i)$
+        \item if $b_i = 1$ then $h_{i-1} = hash(w_i, h_i)$
+    \end{itemize}
+    This means that given $n,\, w$ and $w_1,\,\ldots,\,w_d$ we may compute the values of $h_i$, starting from $h_d = w$
+    and climbing the tree up to $h_0$ which is the label of the root. Since hash is assumed to be collision resistant
+    (\cite{SHA3}), finding $n$, $w$ and $w_1,\,\ldots,\,w_d$ for which the above procedure yields the given
+    hash value $h_0$ is considered extremely difficult. Therefore, for all practical purposes, proposing the values
+    $n,\,w,\,w_1,\,\ldots,\,w_d$, computing the hash $h_0$ and checking that it is equal to the label in the root of
+    a Merkle tree $T$ is considered a valid proof of $n$ being a node in $T$ labelled with $w$.
+
+    \begin{figure}
+        \include{merkle}
+        \caption{An example Merkle tree.}
+        \label{fig:merkle}
+    \end{figure}
+
+    The above definitions are illustrated in Figure~\ref{fig:merkle} which shows a Merkle tree with a distinguished
+    node $n = 010$. The label $w$ of $n$, together with labels $w_3$, $w_2$ and $w_1$, are used to compute hashes
+    $h_3, \,\ldots, \,h_0$.
+
+
+    Now, going back the lottery setting, a Merkle tree for a lottery description L is a Merkle tree with minimal height
+    such that for every $(a_i, R_i, r_i)$ in $P(L)$ there exists a leaf labelled with $hash(a_i, R_i, r_i)$.
+    This definition allows many different Merkle trees for a given $L$, so we assume that all lottery participants
+    agree on a common algorithm that builds a "canonical" tree $M(L)$ for each $L$, so that every payee may construct
+    $M(L)$ after receiving $L$. Alternatively, the sender may send a tree for $L$ together with $L$ to each payee.
+    Note that the height of any Merkle tree for $L$, that is the maximum depth of any leaf, is equal to
+    $\text{ceil}(\log_2 P)$.
+
+    Now, a \textbf{hash of $L$} is defined as $h(L) = hash(hash(B(L)), h(M(L)))$, where $B(L)$ is the binary encoding of $L$
+    and $h(M(L))$ is the label of the root of $M(L)$.
+
+    A winner certificate $C = (a, R, r, b_1, \ldots, b_d, w_1, \ldots, w_d)$ consists of
+    \begin{itemize}
+        \item 160-bit word $a$ (address of the proposed winner),
+        \item 32-bit words $R$ and $r$,
+        \item a sequence $b_1, \ldots, b_d$ of bits, with $d \geq 0$,
+        \item a sequence $w_1, \ldots, w_d$ of 256-bit words.
+    \end{itemize}
+
+    Given $C$ we define $h_d = hash(a, R, r)$ and, for $i = 1, .., d$, $h_{i-1} = hash(h_i, w_i)$ if $b_i = 0$ and
+    $h_{i-1} = hash(w_i, h_i)$ otherwise.
+    Let $x$ be a 32-bit random value. $C$ is \textbf{valid} for $s$ if
+    \begin{displaymath}
+        R \leq x < R + r  \text{ and } hash(hash(B(L)), h_0) = h(L).
+    \end{displaymath}
+
+    In our concrete implementation a winner certificate is represented by the following Solidity struct:
+
+    \begin{center}
+        \begin{tabular}{ll}
+            \texttt{struct WinnerCertificate \{} &  \\
+		    \qquad \texttt{address winner;} &  \texttt{// winner's address}\\
+		    \qquad \texttt{uint32 rangeStart;} & \texttt{// beginning of the range}\\
+		    \qquad \texttt{uint32 rangeLength;} & \texttt{// length of the range}\\
+		    \qquad \texttt{bool[] path;} & \texttt{// encoding of the leaf as a sequences $b_1, \ldots, b_d$}\\
+		    \qquad \texttt{bytes32[] values;} & \texttt{// values $w_1, \ldots, w_d$}\\
+    		\texttt{\}}
+        \end{tabular}
+    \end{center}
+
+    The algorithm that checks the validity of a certificate may be coded as the following Solidity function,
+    in which \texttt{rand} is the random value ($x$ in the description above), \texttt{lotteryHash} is $h(L)$
+    and \texttt{descriptionHash} is $hash(B(L))$:
+
+    \begin{center}
+        \begin{tabular}{l}
+            \texttt{function checkCertificate(uint32 rand, bytes32 lotteryHash, bytes32 descriptionHash, }\\
+            \qquad\qquad\qquad\qquad\qquad\qquad\qquad \texttt{WinnerCertificate cert) internal returns (bool) \{ }\\
+            \qquad \texttt{// Check if random val falls into the range}\\
+            \qquad \texttt{if (rand < cert.rangeStart || rand >= cert.rangeStart + cert.rangeLength)}\\
+            \qquad\qquad \texttt{return false;}\\
+            \\
+            \qquad\texttt{// Initially, h is the value stored in the leaf ($h_d$)}\\
+            \qquad \texttt{bytes32 h = bytes32(uint256(cert.winner) << 64}\\
+            \qquad\qquad\qquad\qquad \texttt{+ uint256(cert.rangeStart) << 32}\\
+            \qquad\qquad\qquad\qquad \texttt{+ cert.rangeLength}\\
+            \qquad\qquad\qquad\qquad \texttt{);}\\
+            \\
+            \qquad \texttt{// Update h with hashes $h_{d-1}, \ldots, h_0$}\\
+            \qquad\texttt{for (uint i = cert.path.length; i > 0; i--) \{}\\
+            \qquad\qquad \texttt{if (cert.path[i-1] == false)}\\
+            \qquad\qquad\qquad \texttt{h = sha3(h, cert.values[i-1]);}\\
+            \qquad\qquad \texttt{else}\\
+            \qquad\qquad\qquad\texttt{h = sha3(cert.values[i-1], h);}\\
+            \qquad\texttt{\}}\\
+            \\
+            \qquad\texttt{// Mix with description hash}\\
+            \qquad\texttt{h = sha3(desriptionHash, h);}\\
+            \\
+            \qquad\texttt{return h == lotteryHash;}\\
+            \texttt{\}}
+        \end{tabular}
+    \end{center}
 
 \section{Probabilities}
 
-\begin{figure}
-  \include{merkle}
-  \caption{An example Merkle tree.}
-  \label{fig:merkle}
-\end{figure}
 
-Figure~\ref{fig:merkle} shows an example Mekle tree with a distinguished node $n = 010$. Its label $w$, together with labels $w_3$, $w_2$ and $w_1$ are used to compute hashes $h_3, \ldots, h_0$.
 
 \end{document}
