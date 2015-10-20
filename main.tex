@@ -6,6 +6,7 @@
 \usepackage{amsmath}
 \usepackage{hyperref}
 \usepackage{lmodern}
+\usepackage{enumitem}
 
 % For TikZ diagrams:
 \usepackage{pgfplots}
@@ -129,51 +130,627 @@
     which we definitely want to avoid in Golem.
 
 
-\section{Probabilistic payments schemes}
+\subsection{Probabilistic payments schemes}
     We next turn our attention to probabilistic payment schemes. The idea is that instead of paying \$0.01 directly,
     the payer issues a "lottery ticket" for a lottery with \$1 prize with a $1/100$ chance of winning. The expected
     value of such ticket is \$0.01. The advantage is that on average only one ticket in 100 will lead to an actual
-    transaction. Such scheme is proposed eg in [https://people.csail.mit.edu/rivest/pubs/Riv97b.pdf] and [http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.44.757&rep=rep1&type=pdf]. A possible implementation of this scheme may use cryptographic hash functions, for example SHA-3. First, both the payer and the recipient draw (or choose) their numbers n_P and n_R, respectively. Both parties initially keep their numbers secret. Then the recipient reveals hash(n_R). In the next step, the payer reveals hash(n_P). Finally, both parties reveal their numbers (in any order) and use them to decide if the recipient receives the prize: the recipient wins if and only if n_P = n_R mod N, where 1/N is the probability of winning. Note that even if the recipient learns n_P before revealing n_R, she cannot change her choice of n_R since she committed to the original choice by revealing hash(n_R) and it is considered infeasible to find another number with the same hash.
+    transaction. Such scheme is proposed eg in \cite{RIVEST} and \cite{WHEELER}.
+    A possible implementation of this scheme may use cryptographic hash functions, for example SHA-3. First, both
+    the payer and the recipient draw (or choose) their numbers $n_P$ and $n_R$, respectively.
+    Both parties initially keep their numbers secret. Then the recipient reveals $hash(n_R)$. In the next step,
+    the payer reveals $hash(n_P)$. Finally, both parties reveal their numbers (in any order) and use them to decide
+    if the recipient receives the prize: the recipient wins if and only if $n_P = n_R \mod N$, where $1/N$ is
+    the probability of winning. Note that even if the recipient learns $n_P$ before revealing $n_R$, she cannot change
+    her choice of $n_R$ since she committed to the original choice by revealing $hash(n_R)$ and it is considered
+    infeasible to find another number with the same hash.
 
-Obviously, this probabilistic procedure does not guarantee that the Golem node is fairly remunerated if it only takes part in a small number of tasks. However, as the number of tasks increases, the node's real income from lottery rewards will approach the amount she would get being paid for each task. For the requester node the situation is similar, but the probabilistic effects may be more problematic: suppose a requester node just joined Golem and now has to pay for its first task to 100 other nodes with tickets giving each receiver 1/100 chance of winning the total task value. Now, since each ticket is evaluated independently, there is a 37% chance that the requester will not have to pay anything but also a substantial 26% chance that at least two tickets win, and almost 2% chance that at least 4 tickets win. Therefore the requester should be prepared to pay 4 times more than expected,
-which may discourage users from joining Golem.
+    Obviously, this probabilistic procedure does not guarantee that the Golem node is fairly remunerated if it only
+    takes part in a small number of tasks. However, as the number of tasks increases, the node's real income from
+    lottery rewards will approach the amount she would get being paid for each task. For the requester node the
+    situation is similar, but the probabilistic effects may be more problematic: suppose a requester node just
+    joined Golem and now has to pay for its first task to 100 other nodes with tickets giving each receiver
+    1/100 chance of winning the total task value. Now, since each ticket is evaluated independently,
+    there is a 37\% chance that the requester will not have to pay anything but also a substantial 26\% chance that
+    at least two tickets win, and almost 2\% chance that at least 4 tickets win. Therefore the requester should be
+    prepared to pay 4 times more than expected, which may discourage users from joining Golem.
 
-We can modify this scheme to make it more predictable for the requester by ensuring that among the tickets issued to reward the participants of a single task, exactly one ticket is winning. For example, if there are 100 participants then each of them has 1/100 chance of winning, as before, but the requester has guarantee that task value will have to be paid only once. In other words, after the task is completed the requester will have to organize a lottery for the participants, in which exactly one participant wins. The drawback of this approach is that it requires a protocol that involves a large group of participants: the payer and all the payees. Such a protocol is more complex than in a one-to-one scenario where each lottery ticket is evaluated separately.
+    We can modify this scheme to make it more predictable for the requester by ensuring that among the tickets issued
+    to reward the participants of a single task, exactly one ticket is winning. For example, if there are 100
+    participants then each of them has 1/100 chance of winning, as before, but the requester has guarantee that
+    task value will have to be paid only once. In other words, after the task is completed the requester will have
+    to organize a lottery for the participants, in which exactly one participant wins. The drawback of this approach
+    is that it requires a protocol that involves a large group of participants: the payer and all the payees.
+    Such a protocol is more complex than in a one-to-one scenario where each lottery ticket is evaluated separately.
 
-In the rest of this paper we describe and compare several possible payment schemes (most of them briefly) in the context of Ethereum platform.
+    In the rest of this paper we describe and compare several possible payment schemes (most of them briefly) in the
+    context of Ethereum platform.
 
-\section{Ethereum}
+\subsection{Ethereum}
+    We estimate the cost (in terms of transaction fees) of several payment schemes implemented in Ethereum:
+
+    \begin{enumerate}
+        \item \textbf{Direct transfer (with batching).}
+        This is a naive approach in which the requesting node makes a transfer to each compute node participating
+        in the task.
+        Simple transfer costs 21 000 gas units for every user, which is about \$0.001 at the time of this writing.
+        We also consider a variant that uses batching\cite{BUTERIN} to pack all payments in one transaction.
+        In this case the cost of sending ether is 9000 gas units per node plus the cost of sending all data
+        to the contract (min. 2000 gas per node). With current gas prices this method gives transaction fees
+        below 5\% for payments of \$0.01 or more. To handle tasks with lower payments to a single recipient and to
+        account for fluctuations of gas price we have to find a better method.
+	    \item \textbf{Subaccounts.}
+        Another approach is to create a smart contract that keeps an account balance for every Golem node.
+        Every new user must register his account in the contract and put some ether in contract storage (with user
+        address as the key and ether amount as the value). In the payment step, the requester sends a list of payees
+        and amounts to the contract and the accounts of the payees are increased by the specified amounts.
+        User can pay out only from his own account. In this scenario, the cost of a single transaction is 5000 gas
+        units per recipient (for modifying the storage) plus the cost of sending all data to the contract plus the
+        cost of additional integrity checks (user must send enough ether etc.).
+	    \item \textbf{Lottery.}
+        This is a probabilistic approach in which the requester organizes a lottery in which only one compute node
+        wins. In this scenario the cost is generated mainly by the size of data that needs to be transferred to
+        the contract. This approach is described in Section \ref{sec:lottery}.
+    \end{enumerate}
+
+    We also mention two additional payment schemes based on Ethereum but do not attempt to estimate their cost:
+
+    \begin{enumerate}
+	    \item \textbf{Micropayment channels}
+        Micropayment channels in context of Ethereum are described in \cite{BUTERIN}. They allow the user to send
+        transactions off-chain. Unfortunately, as in the case of Bitcoin micropayment channels \cite{BITCOINJ} this
+        solution is designed for many 1-1 microtransactions between two given parties. The cost of opening a channel
+        is quite large (at least the cost of adding 5 new storage fields 20 000 gas each) and channel endpoints might
+        never cooperate again. Additionally, a micropayment channel requires an escrow, so if a requester has to open
+        many channels the deposits may sum up to a large amount.
+	\item \textbf{Bank-set approach.}
+        Most micropayments protocols for P2P networks require some sort of a centralized institution (bank) that is
+        in charge of approving transactions \cite{JAIN}. One idea is to replace this institution with a set of peers
+        (an approach similar to the Karma protocol \cite{VISHNUMURTHY}) that keep track of transactions and user accounts.
+        The requester pays the total amount of ether for each task into one joint Ethereum contract.
+        If a user wants to pay out her share from her account, the nodes in the bank-set vote for or against the payout.
+        Unfortunately it is not clear how to choose bank-set representatives, how Ethereum contract should know
+        current representatives, how should they vote and how to design a reward/punishment mechanism
+        for representatives. At the moment, this solution seems to be too complicated to be practical.
+
+\end{enumerate}
 \section{Lottery}
-\section{Optimistic approach}
-\section{The problem of 256 past blocks}
-\section{Lottery agents}
-\section{Lottery Protocol Specification}
-\section{Cost comparison}
-\section{Source of randomness for the Lottery implementation}
+\label{sec:lottery}
+    \paragraph{Lottery contract.}
+    Lotteries are handled by a single Ethereum contract which stores information about all the lotteries that are in
+    progress. Participants (the payer and payees) send messages to this contract to start the lottery and claim
+    the reward. The basic protocol consists of two types of messages: \texttt{lotteryInit}, sent by the payer to
+    establish a lottery after the task is completed, and \texttt{lotteryWinner}, sent by any participant
+    (presumably the winner) after the winner is determined to transfer the reward to the winner's account and end
+    the lottery.
+
+    \paragraph{Starting the lottery.}
+    To start a new lottery, the payer creates a lottery description $L$ and calculates its hash $h(L)$. The
+    description contains a unique lottery identifier, Ethereum addresses $a_1,\,\ldots,\,a_n$ of each payee and
+    payment values $v_1,\,\ldots,\,v_n$ due to each payee, possibly together with some other data. The payer then
+    sends an \texttt{lotteryInit} message to the contract to announce the lottery. The message contains $h(L)$ and
+    also transfers the task value from the payer to the contract (in Ethereum, each contract is associated with an
+    account). The contract stores $h(L)$ in the Ethereum persistent storage. Since $L$ contains a unique lottery
+    identifier, $h(L)$ is also a unique value and may be used as a key when storing and retrieving various lottery
+    data to/from Ethereum persistent storage.
+
+    The payer also announces the lottery description $L$ to the Golem network, so that every interested node can
+    verify that its payment $v_i$ has the correct value and check that $h(L)$ is indeed written to the Ethereum
+    storage.
+
+    \paragraph{Determining the winner.}
+    The winner of the lottery can be uniquely determined from its description $L$ and some random value $R$ that
+    is not known to any party at the moment the lottery is started. We assume that $L$ and the timestamp $t_0$ of
+    the moment at which $h(L)$ is written to the Ethereum storage determine another timestamp $t_R$ of some future
+    moment at which $R$ will be revealed to everyone. From this moment on, $R$ will also be available to the lottery
+    contract.
+
+    A standard way to implement this rather abstract assumption in a blockchain setting is to use the hash of some
+    future block as a random value. When the lottery is initialized the contract increments the number of the current
+    Ethereum block by a fixed number, determining the number of a deciding block. The hash of this future block will
+    be used to determine the lottery winner. There is a problem though with implementing this simple solution in
+    Ethereum (see Section \ref{sec:problem256} for details).
+
+    \paragraph{Claiming the reward.}
+    Lottery reward may be claimed by sending a \texttt{lotteryCheck} message to the lottery contract, with the
+    full lottery description $L$. The contract then calculates $h(L)$ and checks that it exists in the storage,
+    which indicates that the lottery has started but the reward has not been claimed yet.
+    If $t_R$ has elapsed and $R$ is available, the contract computes the winner's address from $L$ and $R$ and
+    transfers the reward from the contract's account to the winner. At this point, the contract removes $h(L)$
+    from the storage.
+
+    The problem with the basic protocol is that the size of $L$ is proportional to the number of payees and whoever
+    sends the \texttt{lotteryCheck} message has to pay for sending $L$ and processing it by the contract.
+    Taking into account that sending a byte of data in a message costs 68 gas units we estimate that sending and
+    processing the message will require at least 2000 gas units per payee. This would defeat the whole lottery
+    approach, which was proposed in order to avoid paying transaction fees proportional to the number of payees.
+
+    Fortunately, in order to verify that $a_i$ is the winner the contract does not need to examine whole $L$.
+    If the list of payees with their payment values is stored in a data structure called the Merkle tree, it is
+    enough to send and examine an amount of data proportional to the logarithm of the number of payees to verify
+    that $a_i$ is the winner (see Appendix \ref{sec:lottery-description} for details). Therefore instead of sending
+    full lottery description with \texttt{lotteryCheck} we can send the address $a_i$ of the winner and just enough
+    data to verify it.
+
+\subsection{Optimistic approach}
+    If there is a lot of payees, the cost of \texttt{lotteryCheck} may still be high even when only a part of the
+    lottery description is required to compute the winner. We propose an extension of the basic protocol that allows
+    the parties to avoid sending the \texttt{lotteryCheck} message altogether. Instead, a payee can claim to be the
+    winner by sending a new \texttt{lotteryWinner} message containing only $h(L)$. The contract cannot verify the
+    claim and only checks that $h(L)$ exists in the storage. Then the contract stores additional data along with
+    $h(L)$, namely the address $a_i$ of the claimed winner and a computed deadline timestamp $t_d$ which determines
+    when the reward may be paid to $a_i$.
+
+    \paragraph{Claim verification.}
+    Until the deadline $t_d$ elapses anyone can reveal the true winner by sending a \texttt{lotteryCheck} message with
+    winner address $a_i$ and enough data to validate it. Sending a \texttt{lotteryCheck} message after a
+    \texttt{lotteryWinner} message should only happen if the payee that claimed to be the winner is caught cheating,
+    which we hope will occur rarely (hence the name "optimistic approach"). To encourage peers to reveal cheaters,
+    and to punish dishonest participants, we provide a mechanism of deposits. A payee sending the \texttt{lotteryWinner}
+    message must transfer a deposit which is paid back if no one protests before the deadline elapses.
+    This deposit is a reward for proving that the payee claiming to be the winner is cheating.
+
+    \paragraph{Paying out the reward.}
+    After the deadline $t_d$ elapses, anyone may send a message \texttt{lotteryPayout} with $h(L)$ as the argument.
+    If $h(L)$ exists in the storage and the address of the payee claiming to be the winner is set, the reward is
+    transferred to this address and the lottery data is erased from the storage.
+
+    Under the assumption that all participants are honest, the cost of a lottery is constant, independent of the number
+    of payees.
+    An important property of the protocol described above is that after the random value is revealed, the payee who
+    determines to be the winner may calculate the cost of a \texttt{lotteryCheck} message and decide whether to perform
+    the basic protocol by sending \texttt{lotteryCheck} and obtain the reward immediately (modulo the time required by
+    the Ethereum network to confirm the transaction), or to follow the extended protocol by sending the
+    \texttt{lotteryWinner} with a deposit, wait until the deadline elapses and send the \texttt{lotteryPayout} message
+    to get the lottery reward.
+\subsection{The problem of 256 past blocks}
+    \label{sec:problem256}
+    Recall that we planned to use the hash of a future Ethereum block (deciding block) to determine who wins
+    the lottery. More precisely, we assume that when the lottery is started the contract computes the number
+    of the deciding block and stores this number together with other lottery data. Later on, when a
+    \texttt{lotteryCheck} is sent the contract checks if a block with the required number has already been
+    produced and if so, uses its hash to calculate who is the winner. Now, a problem with this approach is that in
+    Ethereum, contracts can only access hashes of the last 256 blocks. Since a block is created roughly each 15
+    seconds, this gives us only about an hour during which the hash value is directly available from the contract.
+    There is no possibility of scheduling a message for sending at a later time in Ethereum, other than relying on
+    a third-party contract (for example Alarm Clock Contract \cite{ALARM}), so during this hour some party has
+    to explicitly send either a \texttt{lotteryCheck} message that will use the hash value to compute the winner,
+    or some other message that will prompt the contract to store the hash value for later use.
+
+    \paragraph{Capturing the hash of the deciding block.}
+
+    To address this issue we extend the protocol with a \texttt{lotteryCaptureHash} message the result of which is to
+    store the hash of the deciding block. To encourage sending this message soon after the deciding block is generated
+    we require that the sender of a \texttt{lotteryInit} message deposits an additional amount on the contract's
+    account, together with the lottery reward. The deposit is returned to the payer if the payer sends a
+    \texttt{lotteryCaptureHash} message within 128 blocks after the deciding block is generated.
+    Between 128 and 256 blocks after the deciding block anyone may send this message and claim the payer's deposit.
+
+    As a last resort, if the hash of the deciding block is not stored and at least 256 more blocks are generated,
+    a \texttt{lotteryCaptureHash} message will store the hash of the unique available block with the number congruent
+    modulo 256 to the number of the original deciding block. In this case, the payer's deposit will remain in the
+    contract's account. Thus instead of trying to retrieve the lost hash we allow the winner to be changed.
+
+    If we could overcome the problem of 256 blocks then a payer deposit and \texttt{lotteryCaptureHash} message would
+    be pointless and protocol would become simpler. An alternative solution would be to use a separate contract
+    for providing hashes of past blocks. See Section \ref{sec:randomness} for more remarks on alternative sources
+    of randomness.
+\subsection{Lottery agents}
+    We have to account for a situation when the lottery winner goes offline for a longer period of time and is
+    unable to claim the reward or simply does not want or cannot pay for sending a \texttt{lotteryCheck} or
+    \texttt{lotteryWinner} message. In such cases a third party may serve as \textbf{lottery agent} sending messages
+    instead of the winner while keeping part of the reward. In particular, after a fixed amount of time elapses
+    since the time when the random value $R$ is revealed (the time when the deciding block is produced) and nobody has
+    claimed to be a winner, anyone may send the \texttt{lotteryCheck} message which will transfer part of the reward,
+    say 10\%, to the sender of the message and the rest to the winner, and will erase the contract from Ethereum
+    storage.
+\subsection{Lottery Protocol Specification}
+    The lottery contract is implemented in Solidity \cite{SOLIDITY}, a high-level language compiled to machine code of
+    the Ethereum Virtual Machine\cite{ETHERDEV}. A contract in Solidity consists of a number of functions, each
+    function is a entry point to the contract code. Below we list Solidity functions that represent messages in the
+    lottery protocol. The types of message arguments are as follows:
+    \begin{itemize}
+        \item \texttt{uint} (an alias for \texttt{uint256}) is the type of 256 bit unsigned integers,
+        \item \texttt{bytes32} is the type of fixed-size arrays of 32 bytes,
+        \item \texttt{address} is the type of 160 bit Ethereum addresses.
+    \end{itemize}
+    In all the functions, the first parameter (\texttt{bytes32 lotteryHash}) is used to specify the lottery on which
+    the function operates. Money is denominated in wei (1 wei = 1.0e-18 ether) and represented as \texttt{uint} values.
+
+    \paragraph{Contract functions.}
+
+    \begin{itemize}
+        \item \texttt{function lotteryInit(bytes32 lotteryHash)}
+
+            The sender Initializes a lottery. Lottery value is transferred to the lottery contract and a structure
+            with lottery data is created in the storage. \texttt{lotteryHash} is the value used as a key to retrieve
+            lottery data from the contract storage (see Appendix \ref{sec:lottery-description} for information how it
+            is computed).
+
+            Estimated cost: 85 000 gas.
+
+        \item \texttt{function lotteryWinner(bytes32 lotteryHash)}
+
+            The sender claims to be the winner. Estimated cost: 85 000 gas.
+
+        \item \texttt{function lotteryCaptureHash(bytes32 lotteryHash)}
+
+            The message saves the hash of maturity block if it is possible. The payer should send this message
+            within 128 blocks since maturity in order to get back the payer deposit.
+            Later but within 256 blocks anyone else can send this message and get the payer deposit as a reward.
+
+            Estimated cost: 30 000 gas.
+
+        \item \texttt{function lotteryCheck(bytes32 lotteryHash, uint256 uid, address winner, }\\
+            \hphantom{} \hskip 5em  \texttt{uint32 rangeStart, uint32 rangeLength, bool[] path, bytes32[] values)}
+
+            The sender specifies an address and the data required to verify that it is the winner's address.
+            If the address is verified, the reward is transferred and the lottery data is erased from the storage.
+
+            Estimated cost: $40\;000 + 2\;700 \cdot \log_2(N)$ gas.
+
+        \item \texttt{function lotteryPayout(bytes32 lotteryHash)}
+
+            The sender wants to receive his claimed reward after deadline elapsed. Transfers the reward and erases
+            lottery data from the storage.
+
+            Estimated cost: 40 000 gas.
+
+    \end{itemize}
+
+    \paragraph{LotteryData struct}
+
+    For every lottery that is in progress the following Solidity structure is stored in the Ethereum storage:
+
+    \begin{tabular}{l}
+        \texttt{struct LotteryData \{}\\
+        \qquad\texttt{uint value;}\\
+        \qquad\texttt{uint maturity;}\\
+        \qquad\texttt{uint deadline;}\\
+        \qquad\texttt{uint randVal;}\\
+        \qquad\texttt{address payer;}\\
+        \qquad\texttt{address winner;}\\
+        \texttt{\}}
+    \end{tabular}
+
+    The meaning of the fields is as follows:
+    \begin{itemize}
+        \item \texttt{value} is the lottery reward (in wei),
+        \item \texttt{maturity} is the number of the deciding block ($t_R$),
+        \item \texttt{deadline} is the timestamp at which the user that claimed to be the winner may collect
+            the reward ($t_d$),
+        \item \texttt{randVal} is the random value determined from the hash of the deciding block ($R$),
+        \item \texttt{payer} is the address of the user that created the lottery,
+        \item \texttt{winner} is the address of the user that claimed to be the winner.
+    \end{itemize}
+
+    The contract will also have an \texttt{uint} variable \texttt{golem\_dep} (Golem's deposit) which will store
+    the total amount collected in the contract from commissions and lost deposits. This amount will be eventually
+    redeemed by equity token holders (all Golem application owners).
+
+    The syntax of Solidity is similar to JavaScript. In particular, if lotteries is a mapping of uints to structs of type LotteryData then the statement
+    \begin{center}
+        \texttt{lotteries[lotteryHash].deadline = t}
+    \end{center}
+
+    will update the field \texttt{deadline} in the \texttt{LotteryData} struct for a lottery with hash
+    \texttt{lotteryHash}. One difference from JavaScript is that in Solidity a \texttt{mapping} is a total
+    function, in particular \texttt{lotteries} initially maps all possible key values to
+    a \texttt{LotteryData} struct with all fields initialized to 0. To check if a lottery data has been initialized
+    we will check if \texttt{lotteries[lotteryHash].value} is nonzero.
+
+
+\paragraph{Protocol}
+
+    In the description of messages below the semantics of the \textbf{Preconditions} and \textbf{Effects} clauses is
+    that if all the conditions specified in \textbf{Preconditions} are satisfied then the contract's state is changed
+    as described in \textbf{Effects}. Otherwise, the message has no effect on the state of the contract.
+    \begin{enumerate}
+        \item The payer negotiates payment with every payee independently. Let $v_i$ be the amount that $i$-th payee
+            expects after this step and let $a_i$ be the address of the $i$-th payee.
+        \item The payer calculates the transaction value $v = \sum_i v_i$, calculates the probability of winning
+            for each payee and composes a lottery description $L$ containing these data (see Section
+            \ref{sec:lottery-description} for details). The payer then sends $L$ to every payee. The payees check that $L$
+            is correct. In particular, they may verify that the expected lottery reward for the $i$-th payee is equal
+            to $v_i$.
+        \item The payer sends a \texttt{lotteryInit} message to the contract with the lottery hash $h(L)$ as the
+            argument. The lottery hash can be calculated by anyone who knows $L$ and is used as a unique lottery
+            identifier throughout the protocol (see Section \ref{sec:lottery-description} for information how $h(L)$ is
+            computed).\\
+            \textbf{Preconditions}: no \texttt{LotteryData} struct is associated with $h(L)$ in the contract's
+            storage. This is equivalent to the condition
+            \begin{center}
+	            \texttt{lotteries[lotteryHash].value == 0}
+	        \end{center}
+            \textbf{Effects}: The message transfers the lottery value $v$ and the payer deposit (additional 10\%
+            of $v$) to the contract and stores the \texttt{LotteryData} struct for the new lottery. The field value
+            is set to $10/11$ of the value transferred by the \texttt{message} and and the remaining 1/11 of this value
+            is treated. Field \texttt{maturity} is initialized with argument $m$ and \texttt{payer} is initialized with
+            the sender's address. The remaining fields are initialized with zeros.
+            \begin{center}
+            \texttt{lotteries[lotteryHash] = LotteryData(value, block.number + maturity, 0, 0, msg.sender, 0)}
+            \end{center}
+            At this point any payee can calculate the hash of the lottery on its own and can verify if it exists in
+            the contract's storage. It can be done by querying the (locally available) Ethereum state.
+        \item Anyone (not only a payer) can send a \texttt{lotteryCaptureHash} message with argument $h(L)$ to write
+            the hash of the deciding block as the lottery seed.\\
+            \textbf{Preconditions}:
+            \begin{enumerate}
+                \item The value field of the \texttt{LotteryData} for the lottery has been set (meaning that the
+                lottery has been initialized but not finalized yet).
+                    \begin{center}
+	                    \texttt{lotteries[lotteryHash].value != 0}
+                    \end{center}
+                \item The lottery \texttt{randVal} has not been set yet.
+                    \begin{center}
+	                    \texttt{lotteries[lotteryHash].randVal == 0}
+	                \end{center}
+                \item The maturity has elapsed (the stored maturity number is less than current pending block number).
+                    \begin{center}
+                	    \texttt{lotteries[lotteryHash].maturity < block.number}
+                	\end{center}
+	        \end{enumerate}
+        \textbf{Effects}:
+        \begin{enumerate}
+            \item  If the difference of the current block number and maturity is not greater than 128 then the hash of
+                the deciding block is written as the \texttt{randVal} and the payer deposit is transferred to the payer.
+                \begin{center}
+                    \begin{tabular}{l}
+                        \texttt{lottery.randVal = random(lottery.maturity);}\\
+                        \texttt{lottery.payer.send(countPayerDeposit(lottery.value));}
+                    \end{tabular}
+                \end{center}
+            \item If the difference of the current block number and maturity is greater than 128 but not greater than
+                256 then  the hash of the deciding block is written as the \texttt{randVal} the payer deposit is
+                transferred to the message sender.
+                \begin{center}
+                    \begin{tabular}{l}
+                        \texttt{lottery.randVal = random(lottery.maturity);}\\
+                        \texttt{msg.sender.send(countPayerDeposit(lottery.value));}
+                    \end{tabular}
+                \end{center}
+            \item If the difference of the current block and maturity is greater than 256 then the hash of the block
+            with number maturity$+k \cdot 256$, where $k$ is the greatest possible integer, is written to the contract
+            as the \texttt{randVal} and the payer deposit remains in the contract (a contract owner gets it).
+            \begin{center}
+                \begin{tabular}{l}
+                    \texttt{lottery.randVal = random(changeMaturity(lottery.maturity));}\\
+		            \texttt{golem\_dep += countPayerDeposit(lottery.value);}
+		        \end{tabular}
+		    \end{center}
+        \end{enumerate}
+        \item Anyone (not only a payee) can send a \texttt{lotteryWinner} message to claim that he is the winner.
+            The message contains the lottery hash and requires to transfer a winner deposit.\\
+            \textbf{Preconditions}:
+            \begin{enumerate}
+                \item The maturity stored for the lottery has been set.
+                    \begin{center}
+                        \texttt{lotteries[lotteryHash].maturity != 0}
+                    \end{center}
+                \item The maturity has elapsed.
+                    \begin{center}
+		                \texttt{lotteries[lotteryHash].maturity < block.number}
+		            \end{center}
+                \item Nobody has claimed to be the winner yet.
+                    \begin{center}
+                        \texttt{lotteries[lotteryHash].winner == 0}
+                    \end{center}
+            \end{enumerate}
+            \textbf{Effects}:
+            \begin{enumerate}
+                \item The contract sets the claimed winner to the sender's address and sets deadline.
+                    \begin{center}
+                        \begin{tabular}{l}
+                		    lottery.winner = msg.sender;
+                            lottery.deadline = now + deadline;
+                        \end{tabular}
+                    \end{center}
+                \item If the \texttt{randVal} is not set than calls \texttt{lotteryCaptureHash} message.
+                    \begin{center}
+                        \texttt{lotteryCaptureHash(lotteryHash)}
+                    \end{center}
+            \end{enumerate}
+        \item Anyone (not only a payee or the payer) can send a \texttt{lotteryCheck} message. The message contains
+            the lottery hash and the data required to compute the winner (see Section \ref{sec:lottery-verification}
+            for details).\\
+            \textbf{Preconditions:}
+            \begin{enumerate}
+                \item The maturity stored for the lottery has been set
+                    \texttt{lotteries[lotteryHash].maturity != 0}
+                \item The maturity has elapsed.
+	                \texttt{lotteries[lotteryHash].maturity < block.number}
+	        \end{enumerate}
+	        \textbf{Effects:}
+	        \begin{enumerate}
+                \item If the \texttt{randVal} is not set than call \texttt{lotteryCaptureHash} message.
+                    \begin{center}
+                        \texttt{lotteryCaptureHash(lotteryHash)}
+                    \end{center}
+                \item If 28800 blocks has been added to the blockchain after the deciding block (this would take
+                    approx. 5 days) then 10\% of the transaction value $v$ is transferred to the sender (which is treated
+                    as a lottery agent) and the transaction value is reduced to 90\% of its previous value.
+                    \begin{center}
+                        \texttt{msg.sender.send(countAgentProvision(lottery.value));}
+                    \end{center}
+                \item If the winner field is set to 0 in the lottery data than the transaction value is sent to the
+                    winner.
+                    \begin{center}
+                        \texttt{winner.send(lottery.value);}
+                    \end{center}
+                \item If the winner field is equal to the winner address then the transaction value and the winner
+                    deposit are transferred to the winner.
+                    \begin{center}
+			            \texttt{winner.send(lottery.value + countWinnerDeposit(lottery.value));}
+			        \end{center}
+			    \item If the winner field is not equal to the winner address then the transaction value is
+			        transferred to the winner, winner deposit is transferred to the sender.
+			        \begin{center}
+			            \texttt{msg.sender.send(countWinnerDespoit(lottery.value));}
+			        \end{center}
+                \item The lottery is erased from the contract.
+                    \begin{center}
+                        \texttt{delete lotteries[lotteryHash]}
+                    \end{center}
+            \end{enumerate}
+        \item Anyone can send a \texttt{lotteryPayout} message to the contract. The message contains the lottery hash.\\
+            \textbf{Preconditions:}
+            \begin{enumerate}
+                \item The deadline has elapsed.
+                    \begin{center}
+		                \texttt{lotteries[lotteryHash].deadline < now}
+		            \end{center}
+                \item Somebody has claimed to be a winner (winner isn't set to zero).
+                    \begin{center}
+                        \texttt{lotteries[lotteryHash].winner != 0}
+                    \end{center}
+            \end{enumerate}
+            \textbf{Effects:}
+            \begin{enumerate}
+                \item The transaction value and the deposit are transferred to the claimed winner.
+                    \begin{center}
+			            \texttt{lottery.winner.send(lottery.value + countWinnerDeposit(lottery.value))}
+			        \end{center}
+                \item Transaction is completed and the lottery data is erased from the contract.
+                    \begin{center}
+                        \texttt{delete lotteries[lotteryHash]}
+                    \end{center}
+           \end{enumerate}
+    \end{enumerate}
+\subsection{Cost comparison}
+\subsection{Source of randomness for the Lottery implementation}
+\label{sec:randomness}
+    In our lottery implementation we use the hash of a future block as the source of randomness. This solution has
+    two drawbacks. First, there is a risk that the random value may be manipulated by Ethereum miners. That is,
+    a miner may decide whether to publish a newly found block after looking at the block hash and calculating
+    the winning address. Clearly, if the lottery reward is small compared to the reward for finding a new block
+    then it is not profitable to withhold a block to change the odds of winning a lottery. Thus one way to circumvent
+    this problem is to limit the maximum lottery reward and in case the task value exceeds this limit, split payees
+    into several groups and organize a separate lottery for each group, with a fraction of the task value as the
+    reward.
+
+    The second problem is due to the fact that only the hashes of past 256 blocks are available in the contract
+    so we have to complicate the protocol and introduce the mechanism of deposits to encourage the participants
+    to capture the hash of the deciding block.
+
+    Let us consider some alternatives to using block hashes as the source of randomness.
+
+    \paragraph{Not using any external source of randomness at all.}
+    Let us consider a protocol in which the winner is determined using only data provided by a group of participants,
+    in a peer-to-peer environment, without using any external sources (including hashes of future block) and without
+    relying on any trusted third party. That is, each participant reveals a piece of data and once all data is public
+    the winner is determined in a provable way.
+
+    The protocol needs to deal with situations in which some participants fail to reveal their data. This may be due
+    to communication failure or may be done on purpose. Assume one participant delayed revealing her data until all
+    other data are revealed. This participant has now full information required to determine who the winner is,
+    and may decide to quit the protocol if she decides that its outcome is not to her advantage\footnote{We assume
+    the participants commit to their data before the protocol starts, for example using hash functions,
+    so changing the data at this point is not an option.}.
+
+    In this situation the procedure may be either (1) to determine the winner using only the available data or (2)
+    to repeat the whole protocol without the participant who quit. The first case means that input from all
+    participants is not required for completing the protocol which may make the whole procedure vulnerable to
+    various denial-of-service attacks that prevent participants from providing their data.
+
+    In the second case, participants may collude to affect the outcome. Suppose there is a group of participants
+    cooperating to increase the chance of one of them winning. Now, one of the group may delay revealing the last
+    piece of data and quit if the winner would not be a member of the group, and the procedure would need to be
+    repeated. Obviously, such behaviour increases the chances that a group member will finally turn out to be the
+    winner and thus makes the whole protocol unfair\footnote{We may consider a modification of the protocol in which
+    the order in which the participants reveal their data is fixed in some fair way. However, there will still be
+    a possibility that the last participant to reveal his data is a member of the group.}.
+
+    Note that participants may be discouraged from quitting the lottery for example by losing deposits they have to
+    make earlier. This would make the whole lottery protocol more complicated and would require some further design
+    decisions, for example how big should the deposit be, what if a participant does not have money to pay the deposit
+    and so on.
+
+    \paragraph{Using a separate contract as source of randomness.}
+    Another possibility is to use a separate contract to provide random values. We already mentioned RANDAO
+    (\cite{RANDAO}, \cite{RANDAO2}), other similar third party solutions may appear in future.
+    We may also consider implementing our own custom contract for storing hashes of past blocks.
+    The idea is to consider only hashes of blocks with numbers divisible by 100 (for instance) and remember last 100
+    (for instance) such hashes. This means that a new random value can be generated roughly each 25 min
+    (time to generate 100 blocks) and the contract may reproduce values from the past 100 days
+    (time to generate 10 000 blocks). The contract stores an array of 100 hashes and has two functions:
+    \texttt{feed()} for writing the hash of the most recent block with number divisible by 100, and
+    \texttt{get(blocknum)} which returns the hash for the latest block with number divisible by 100 less or
+    equal to \texttt{blocknum}.
+
+    \label{sec:hundred}
+
+    \begin{tabular}{l}
+        \texttt{contract OneHundredHashes \{}\\
+        \\
+	    \qquad \texttt{bytes32[100] hashes;}\\
+        \\
+	    \qquad\texttt{function feed() external \{}\\
+    	\qquad\qquad \texttt{uint8 index = uint8((block.number / 100) \% 100);}\\
+    	\qquad\qquad \texttt{hashes[index] = block.blockhash(block.number - block.number \% 100);}\\
+	    \qquad\texttt{\}}\\
+        \\
+	    \qquad \texttt{function get(uint blocknum) external returns (bytes32) \{}\\
+        \qquad\qquad \texttt{uint8 index = uint8((blocknum / 100) \% 100);}\\
+    	\qquad\qquad \texttt{return hashes[index];}\\
+	    \qquad\texttt{\}}\\
+    \texttt{\}}
+    \end{tabular}
+
+    The cost of a call to feed is 26 000 gas (21 000 for a transaction + 5 000 for updating storage) and feed should
+    be called at least every 100 blocks, that is, roughly 20 000 times a year. With the current price of gas
+    and Ether, the cost of running the contract is approx \$20 per year. The cost of contract initialization and
+    storing first 100 hashes is neglible (well below \$1). The cost of calling get is slightly above 21 000 gas
+    (reading from storage is cheap compared to writing).
+
+    Obviously the contract relies on an external service that calls feed once in every 25 min.
+
 \section{Conclusion}
 \begin{thebibliography}{9}
-\bibitem{ANDRESEN} Andresen, Gavin. "Back-of-the-envelope calculations for marginal cost of transactions",
+\bibitem{ALARM} Ethereum Alarm Clock contract website, \url{http://www.ethereum-alarm-clock.com/}.
+\bibitem{ANDRESEN} Andresen, Gavin. \textit{"Back-of-the-envelope calculations for marginal cost of transactions"},
     \url{https://gist.github.com/gavinandresen/5044482}.
-\bibitem{BITCOIN} Nakamoto, Satoshi. \textit{"Bitcoin A Peer-to-Peer Electronic Cash System"},
-    \url{https://bitcoin.org/bitcoin.pdf}, 2008.
-\bibitem[BITCOINJ] "Working with micropayment channels", \url{https://bitcoinj.github.io/working-with-micropayments}.
-\bibitem{BITFEE} "Bitcoin Transaction Fees Explained" webpage, \url{http://bitcoinfees.com/},  last update 2014.
+\bibitem{BITCOIN} Nakamoto, Satoshi. \textit{"Bitcoin A Peer-to-Peer Electronic Cash System"}, 2008,
+    \url{https://bitcoin.org/bitcoin.pdf}.
+\bibitem{BITCOINJ} \textit{"Working with micropayment channels"},
+    \url{https://bitcoinj.github.io/working-with-micropayments}.
+\bibitem{BITFEE} \textit{"Bitcoin Transaction Fees Explained"} webpage, last update 2014, \url{http://bitcoinfees.com/}.
+\bibitem{BUTERIN} Buterin, Vitalik. "Scalability, Part 1: Building on Top", Ethereum Blog, September 17, 2014,
+    \url{https://blog.ethereum.org/2014/09/17/scalability-part-1-building-top/}.
 \bibitem{CHANGETIP} ChangeTip website, \url{https://www.changetip.com/}.
-\bibitem{COINTIP} "Shutting Down Coinbase Tip Button",
-    \url{https://blog.coinbase.com/2015/02/10/shutting-down-the-coinbase-tip-button/}, 2015.
-\bibitem{KASKALOGLU}Kaşkaloğlu, Kerem, "Near Zero Bitcoin Transaction Fees Cannot Last Forever",
-    \url{http://sdiwc.net/digital-library/near-zero-bitcoin-transaction-fees-cannot-last-forever.html},
-    The International Conference on Digital Security and Forensic(DigitalSec2014), 91-99, June, 2014.
-\bibitem{FRS} Board of Governors of the Federal Reserve System, Press Release,
-    \url{http://www.federalreserve.gov/newsevents/press/bcreg/20110629a.htm}, June 29, 2011.
+\bibitem{COINTIP} \textit{"Shutting Down Coinbase Tip Button"}, 2015,
+    \url{https://blog.coinbase.com/2015/02/10/shutting-down-the-coinbase-tip-button/}.
+\bibitem{ETHERDEV} \textit{Ethereum Development Tutorial}, last update May 24, 2015,
+    \url{https://github.com/ethereum/wiki/wiki/Ethereum-Development-Tutorial}.
+\bibitem{ETHEREUM} \textit{"Ethereum White Paper"}, \url{https://github.com/ethereum/wiki/wiki/White-Paper}.
+\bibitem{FRS} Board of Governors of the Federal Reserve System, Press Release, June 29, 2011,
+    \url{http://www.federalreserve.gov/newsevents/press/bcreg/20110629a.htm}.
+\bibitem{JAIN} Jain, Mohit, Siddhartha Lal and Anish Mathuria. \textit{"A Survey of Peer-to-peer Micropayment Schemes},
+    2008, \url{http://www.dgp.toronto.edu/~mjain/P2P_Micropayment-2008.pdf}.
+\bibitem{KASKALOGLU}Kaşkaloğlu, Kerem, \textit{"Near Zero Bitcoin Transaction Fees Cannot Last Forever"},
+    The International Conference on Digital Security and Forensic(DigitalSec2014), 91-99, June, 2014,
+    \url{http://sdiwc.net/digital-library/near-zero-bitcoin-transaction-fees-cannot-last-forever.html}.
+\bibitem{RANDAO} McKinnon, Dennis. RANDAO repository,
+    \url{https://github.com/dennismckinnon/Ethereum-Contracts/tree/master/RANDAO}.
+\bibitem{RANDAO2} Qian, Yaucai. RANDAO repository, \url{http://github.com/randao}.
+\bibitem{RIVEST} Rivest, Ronald. \textit{"Electronic Lottery Tickets as Micropayments"},
+    "In Financial Cryptography", 307--314, Springer Verlag, 1997,
+    \url{https://people.csail.mit.edu/rivest/pubs/Riv97b.pdf}.
+\bibitem{SOLIDITY} \textit{Solidity Documentation}, \url{https://ethereum.github.io/solidity/docs/home/}.
 \bibitem{SHA3} FEDERAL INFORMATION PROCESSING STANDARDS PUBLICATION,
     \textit{"SHA-3 Standard: Permutation-Based Hash and Extendable Output Functions"}, FIPS PUB 202,
     \url{http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf}.
+\bibitem{VISHNUMURTHY} Vishnumurthy, Viviek, Sangeeth Chandrakumar and Emin G\:{u}n Sirer, \textit{"KARMA: A Secure
+    Economic Framework for Peer-to-Peer Resource Sharing"}, 2003,
+   \url{http://cs.brown.edu/courses/csci2950-g/papers/karma.pdf}.
+\bibitem{WHEELER} Wheeler, David. \textit{"Transactions Using Bets"},
+    "In proceedings Fourth Cambridge Workshop on Security Protocols", 82--92, Springer, 1996.
+\bibitem{WOOD} Wood, Gavin. "Ethereum: A Secure Decentralized Generalised Transaction Ledger", 2014,
+    \url{http://gavwood.com/paper.pdf}.
 \end{thebibliography}
 \appendix
 \section{Dictionary}
 \section{Contract code}
 \section{Lottery description}
+\label{sec:lottery-description}
     Here we show how to store lottery data in a Merkle tree, so that the contract can verify that a specified payee
     is indeed the winner in the number of steps proportional to the logarithm of the number of payees.
     We assume a fixed cryptographic hash function [ref] that will be used for the payment protocol.
@@ -241,6 +818,8 @@ In the rest of this paper we describe and compare several possible payment schem
         words (thus $S = 32$). The definitions below can be adjusted to other values of $S$ in a straightforward way.
     \end{dfnt}
 
+\subsection{Lottery verification}
+    \label{sec:lottery-verification}
     Now, in order to verify that $a_i$ is the winner of a lottery described by $L$ for a given random value $R$,
     one has to make sure that $P(L)$ contains a tuple $(a_i, R_i, r_i)$ such that $R_i \leq R < R_i + r_i$ holds.
     This can be done by proposing the tuple $(a_i, R_i, r_i)$ and:
