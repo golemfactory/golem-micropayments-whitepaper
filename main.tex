@@ -12,6 +12,8 @@
 \usepackage{pgfplots}
 \pgfplotsset{compat=1.11}
 
+\newcommand{\BTC}{BTC}
+
 \title{A Probabilistic Micropayment Scheme for Golem}
 \author{Golem Team (\texttt{golem@imapp.pl})}
 
@@ -24,16 +26,16 @@
 \maketitle
 
 \begin{abstract}
-    We consider a setting where a transaction is made by a single payer
+    We consider a setting where a payment is made by a single payer
     to a possibly large group of~recipients, each receiving only a small
     sum in the order of \$$0.01$. For such small sums transaction fees are
     relatively large even if we consider cryptocurrencies instead of
     bank-based transactions.
 
     Both payers and recipients are expected to repeatedly take part in
-    many transactions, but subsequent transactions of a single payer may
-    have different, possibly disjoint, groups of recipients. Also, we
-    assume that transactions result from activities carried out in a
+    many payments, but subsequent payments of a single payer may
+    have different groups of recipients. Also, we
+    assume that payments result from activities carried out in a
     decentralized peer-to-peer network, so we would like to avoid
     solutions relying on any trusted third party. We cannot therefore use
     existing solutions that require a central server or assume that a
@@ -42,11 +44,14 @@
 
     Instead, we propose a probabilistic payment scheme in which only one
     recipient randomly chosen from a group of candidates is rewarded in
-    a single transaction. Our solution is based on Ethereum and is thus
-    decentralized and avoids relying on a trusted third party. In
-    particular, we describe an~Ethereum smart contract implementing a
-    lottery used to reward recipients. In the proposed payment scheme,
-    the estimated cost of ...\marginpar{dokończyć zdanie}
+    a single payment. Our solution is based on Ethereum and is thus
+    decentralized and avoids relying on a trusted third party. We describe
+    an~Ethereum smart contract implementing a lottery used to reward
+    recipients and calculate the cost of running it. Depending on the
+    variant of the protocol, this cost is either proportional to the
+    logarithm of the number of recipients or constant. In both cases,
+    the cost of running a lottery with 1000 participants is similar
+    to the cost of direct payments to 20 recipients.
 \end{abstract}
 
 \section{Introduction}
@@ -84,13 +89,13 @@
     the larger sum using a single transaction. On the other hand, we may consider methods that assume recurring
     payments to a single payee. That is, a compute node does not necessarily have to be paid a tiny sum for each
     subtask but instead may be paid larger sums once in a while. The obvious requirement is that in the long run
-    the node's income should approach the sum of subtask’s values that this node has computed.
+    the node's income should approach the sum of subtask values that this node has computed.
 
     Thus we are looking for a micropayments solution that handles payments as small as \$0.01 with transaction fees
     in the order of \$0.0001 per payment (this does not necessarily mean \$0.0001 per transaction which may group many
     payments). This rules out traditional methods such as bank-based transactions, credit card transactions or PayPal,
     since transaction fees they incur are in the order of \$0.1, plus a percentage of the transaction value
-    (see eg \cite{FRS}).
+    (see e.g. \cite{FRS}).
     It seems more promising to look at available micropayment schemes based on digital currencies such
     as Bitcoin \cite{BITCOIN}.
 
@@ -98,15 +103,15 @@
 
     We first consider a naive solution in which the requester pays each node participating in the computation
     with a separate Bitcoin transaction. Although Bitcoin transaction fees are lower than for bank-based transactions,
-    a transaction smaller than 0.01 BTC ($\sim$ \$2.5 at the moment of this writing) requires a fee of
-    0.0001 BTC ($\sim$ \$0.025) to discourage "dust" transactions that bloat the Bitcon blockchain \cite{BITFEE}.
+    a transaction smaller than 0.01 \BTC{} ($\sim$ \$2.5 at the moment of this writing) requires a fee of
+    0.0001 \BTC{} ($\sim$ \$0.025) to discourage "dust" transactions that bloat the Bitcoin blockchain \cite{BITFEE}.
     Such a fee may thus be be higher than the transaction value.
 
     A Bitcoin transaction may include many outputs, each to a different recipient, which seems a good match for
     one-to-many payments. We can therefore consider making a single Bitcoin transaction with a separate output
-    for each of the participants. In this case, the flat fee of 0.00001 BTC for "dust" transactions applies only
+    for each of the participants. In this case, the flat fee of 0.00001 \BTC{} for "dust" transactions applies only
     once to the whole transaction, so this is not an issue. However, the size of the transaction in bytes grows with
-    each output and Bitcoin also has fees for large transactions: the default charge is 0.0001 BTC per 1000 bytes.
+    each output and Bitcoin also has fees for large transactions: the default charge is 0.0001 \BTC{} per 1000 bytes.
     Using the formula for approximating transaction size from http://bitcoinfees.com/\cite{BITFEE}:
     \begin{displaymath}
 	    \text{\texttt{transaction\_size}} = 148 * \text{\texttt{number\_of\_inputs}} +
@@ -114,9 +119,9 @@
 	\end{displaymath}
     We may estimate that a transaction with 100 payees will cost at least \$0.1 and the cost will rise as the coins
     become fragmented and require a large number of inputs. However, as fees in Bitcoin are market-based rather than
-    hardcoded, miners may at some point start requiring higher fees for processing transactions \cite{KASKALOGLU}.
+    hard coded, miners may at some point start requiring higher fees for processing transactions \cite{KASKALOGLU}.
     According to some estimates (\cite{ANDRESEN}) miners should require a fee of
-    at least 0.0032 BTC ($\sim$ \$0.8) for including each 1000 bytes in a block), to compensate for the fact that
+    at least 0.0032 \BTC{} ($\sim$ \$0.8) for including each 1000 bytes in a block), to compensate for the fact that
     a larger block is more likely to be orphaned. Finally, we should point out that a receiver of "dust" payments will
     bear the cost of spending the tiny coins she receives, due to higher fees for transactions with large number of
     inputs. This may discourage potential users from participating in Golem. For these reasons, Bitcoin transactions
@@ -134,7 +139,7 @@
     We next turn our attention to probabilistic payment schemes. The idea is that instead of paying \$0.01 directly,
     the payer issues a "lottery ticket" for a lottery with \$1 prize with a $1/100$ chance of winning. The expected
     value of such ticket is \$0.01. The advantage is that on average only one ticket in 100 will lead to an actual
-    transaction. Such scheme is proposed eg in \cite{RIVEST} and \cite{WHEELER}.
+    transaction. Such scheme is proposed e.g. in \cite{RIVEST} and \cite{WHEELER}.
     A possible implementation of this scheme may use cryptographic hash functions, for example SHA-3. First, both
     the payer and the recipient draw (or choose) their numbers $n_P$ and $n_R$, respectively.
     Both parties initially keep their numbers secret. Then the recipient reveals $hash(n_R)$. In the next step,
@@ -142,7 +147,7 @@
     if the recipient receives the prize: the recipient wins if and only if $n_P = n_R \mod N$, where $1/N$ is
     the probability of winning. Note that even if the recipient learns $n_P$ before revealing $n_R$, she cannot change
     her choice of $n_R$ since she committed to the original choice by revealing $hash(n_R)$ and it is considered
-    infeasible to find another number with the same hash.
+    unfeasible to find another number with the same hash.
 
     Obviously, this probabilistic procedure does not guarantee that the Golem node is fairly remunerated if it only
     takes part in a small number of tasks. However, as the number of tasks increases, the node's real income from
@@ -654,7 +659,7 @@
     In the second case, participants may collude to affect the outcome. Suppose there is a group of participants
     cooperating to increase the chance of one of them winning. Now, one of the group may delay revealing the last
     piece of data and quit if the winner would not be a member of the group, and the procedure would need to be
-    repeated. Obviously, such behaviour increases the chances that a group member will finally turn out to be the
+    repeated. Obviously, such behavior increases the chances that a group member will finally turn out to be the
     winner and thus makes the whole protocol unfair\footnote{We may consider a modification of the protocol in which
     the order in which the participants reveal their data is fixed in some fair way. However, there will still be
     a possibility that the last participant to reveal his data is a member of the group.}.
@@ -698,7 +703,7 @@
     The cost of a call to feed is 26 000 gas (21 000 for a transaction + 5 000 for updating storage) and feed should
     be called at least every 100 blocks, that is, roughly 20 000 times a year. With the current price of gas
     and Ether, the cost of running the contract is approx \$20 per year. The cost of contract initialization and
-    storing first 100 hashes is neglible (well below \$1). The cost of calling get is slightly above 21 000 gas
+    storing first 100 hashes is negligible (well below \$1). The cost of calling get is slightly above 21 000 gas
     (reading from storage is cheap compared to writing).
 
     Obviously the contract relies on an external service that calls feed once in every 25 min.
@@ -712,7 +717,7 @@
     \url{https://bitcoin.org/bitcoin.pdf}.
 \bibitem{BITCOINJ} \textit{"Working with micropayment channels"},
     \url{https://bitcoinj.github.io/working-with-micropayments}.
-\bibitem{BITFEE} \textit{"Bitcoin Transaction Fees Explained"} webpage, last update 2014, \url{http://bitcoinfees.com/}.
+\bibitem{BITFEE} \textit{"Bitcoin Transaction Fees Explained"} web page, last update 2014, \url{http://bitcoinfees.com/}.
 \bibitem{BUTERIN} Buterin, Vitalik. "Scalability, Part 1: Building on Top", Ethereum Blog, September 17, 2014,
     \url{https://blog.ethereum.org/2014/09/17/scalability-part-1-building-top/}.
 \bibitem{CHANGETIP} ChangeTip website, \url{https://www.changetip.com/}.
@@ -807,7 +812,7 @@
         $p_1, \,\ldots,\, p_N $of probabilities of winning the lottery for each of the payees. $L$ may also contain
         some other data required by the implementation, the exact details are not relevant. We assume that all parties
         agree on the format used for lottery descriptions and are able to verify that L is valid. By $B(L)$ we denote
-        the binary representation of $L$ (ie encoding of $L$ as a sequence of bits).
+        the binary representation of $L$ (i.e. encoding of $L$ as a sequence of bits).
     \end{dfnt}
 
 
@@ -833,15 +838,15 @@
     if the triples in $P(L)$ are sorted) which would incur a substantial cost for the sender. Fortunately,
     the verification may be performed in the number of steps and with the size of data proportional to the logarithm
     of $N$ by encoding information in $P(L)$ in a \textbf{Merkle tree}, that is a full binary tree in which every inner node
-    is labelled by the hash of the labels of its children.
+    is labeled by the hash of the labels of its children.
 
     In the following we make use of the standard identification of binary trees with nonempty prefix-closed sets
     of sequences over $\{0,1\}$. That is, $T \subseteq \{0,1\}^*$ is a binary tree if $T \neq \empty$ and for every
     $n \in \{0,1\}^*$ and $b \in \{0,1\}$, if $nb \in T$ then $n \in T$. Here, the empty sequence is the
     root of $T$ and $n0$ and $n1$ are the left and the right child of $s$,respectively.
     $T$ is \textbf{full} if every inner node has two children, that is if for every $n \in T$ we have $n0 \in T \iff n1 \in T$.
-    A \textbf{labelled binary tree} is a binary tree $T$ and a function $l$ from $T$ to some fixed set of labels.
-    Finally, a Merkle tree is a \textbf{labelled full binary tree} $(T, l)$ with the labelling function
+    A \textbf{labeled binary tree} is a binary tree $T$ and a function $l$ from $T$ to some fixed set of labels.
+    Finally, a Merkle tree is a \textbf{labeled full binary tree} $(T, l)$ with the la belling function
     $l:\; T \rightarrow \{0,1\}^{256}$ satisfying:
     \begin{displaymath}
         l(n) = hash(l(n0), l(n1))
@@ -868,7 +873,7 @@
     (\cite{SHA3}), finding $n$, $w$ and $w_1,\,\ldots,\,w_d$ for which the above procedure yields the given
     hash value $h_0$ is considered extremely difficult. Therefore, for all practical purposes, proposing the values
     $n,\,w,\,w_1,\,\ldots,\,w_d$, computing the hash $h_0$ and checking that it is equal to the label in the root of
-    a Merkle tree $T$ is considered a valid proof of $n$ being a node in $T$ labelled with $w$.
+    a Merkle tree $T$ is considered a valid proof of $n$ being a node in $T$ labeled with $w$.
 
     \begin{figure}
         \include{merkle}
@@ -882,7 +887,7 @@
 
 
     Now, going back the lottery setting, a Merkle tree for a lottery description L is a Merkle tree with minimal height
-    such that for every $(a_i, R_i, r_i)$ in $P(L)$ there exists a leaf labelled with $hash(a_i, R_i, r_i)$.
+    such that for every $(a_i, R_i, r_i)$ in $P(L)$ there exists a leaf labeled with $hash(a_i, R_i, r_i)$.
     This definition allows many different Merkle trees for a given $L$, so we assume that all lottery participants
     agree on a common algorithm that builds a "canonical" tree $M(L)$ for each $L$, so that every payee may construct
     $M(L)$ after receiving $L$. Alternatively, the sender may send a tree for $L$ together with $L$ to each payee.
@@ -948,7 +953,7 @@
             \qquad\texttt{\}}\\
             \\
             \qquad\texttt{// Mix with description hash}\\
-            \qquad\texttt{h = sha3(desriptionHash, h);}\\
+            \qquad\texttt{h = sha3(descriptionHash, h);}\\
             \\
             \qquad\texttt{return h == lotteryHash;}\\
             \texttt{\}}
