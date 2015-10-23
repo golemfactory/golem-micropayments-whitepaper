@@ -708,6 +708,20 @@
                     \end{center}
            \end{enumerate}
     \end{enumerate}
+
+    \paragraph{Further optimization.} In the final version of the contract we may keep maturity and deadline in
+        the same field. Both values has the same size and they are never both required in the same time. Deadline is
+        only set when someone sends \texttt{lotteryWinner} message and after that maturity is no longer needed.
+
+        Moreover, we can keep payer address and winner address in the same field. Payer address is only require to
+        return payer deposit to the right user. When winner address is being set, the random value has to be
+        processed and on account of that payer deposit and address too.
+
+        Thanks to that we can limit size of final structure from 6 fields to 4.  Additionally, we can pack whole struct
+        in two storage word. Lottery value will be kept in one and all the other values we can pack in one storage
+        word: we need 4 bytes to keep maturity/deadline fields, 4 bytes to keep random variable and 20 bytes to keep
+        payer / winner address.
+
 \section{Cost comparison}
 \label{sec:cost}
     At the time of this writing (13 Oct. 2015) the cost of a gas unit is approximately  $5.5 \cdot 10^{-8}$ ETH, but
@@ -728,6 +742,31 @@
         $\sim$ 160 000 \\ \hline
         Lottery (winner) & $\sim$ 150 000 & 0 & $\sim$ 150 000 & $\sim$ 150 000 & $\sim$ 150 000 \\ \hline
     \end{tabular}
+
+    \begin{figure}
+        \centering
+        \includegraphics[scale=0.6]{payments.pdf}
+        \caption{Transaction cost for different payment methods}
+        \label{fig:payment}
+    \end{figure}
+
+
+    In our solution payer fees are always constant ($\sim$ 100k gas).
+    Lottery winner may then choose further methods of receiving prize:
+    \begin{enumerate}
+        \item check message: this is recommended message. It's cost is proportional to the logarithm of number of
+            participants. It allows user to receive payment immediately and is cheaper for lotteries with less than 129
+            participants (i.e. most scenarios).
+        \item winner-payout message: this methods requires from user sending two messages and she can receives funds no
+            sooner than 24 hours after sending the first message. It has constant cost $\sim$50k gas units.
+            This method is cheaper for lotteries with more than 128 participants, we recommend it only for a specific
+            scenarios where there will be few thousands participants.
+    \end{enumerate}
+
+    With current gas / ether prices lottery transaction cost will be below 0.01\$ regardless from task value and number
+    of lottery participants. Cost comparison with other methods can be seen on figure \ref{fig:payment}.
+    The cost is seven times higher than traditional transaction, so it will be useful only  when there will be above
+    10 lottery participants.
 
 \section{Source of randomness for the Lottery implementation}
 \label{sec:randomness}
@@ -817,6 +856,30 @@
     Obviously the contract relies on an external service that calls feed once in every 25 min.
 
 \section{Conclusion}
+    In this paper we have presented several approaches to one-to-many micropayment problem in the context of the Golem
+    project. We require solution that is decentralized, doesn't require any trusted authority and doesn't assume that
+    a payer makes a series of micropayments to a single recipient. We can however assume that one recipeint will
+    recieve a series of micropayment  from many payers.
+
+    We have discussed possible solutions based on different technologies and described why they are not appropriate to
+    our problem. We have proposed some solutions based on Ethereum smart contracts and analysed their cost.
+    Direct payment in Ethereurm cost right now below 0.001\$ per person. Methods like  subaccounts allows to make
+    payments with a cost 2.5 times lower than direct transfer. But we have to take into account that this prices will
+    probably increase in the future and will not be sufficient for multi payees scenario that we are analysing.
+    Therefore we recommend a probabilistic solution called lottery for payments with more than 10 recipients.
+    This method may have either constant cost, independent from a transaction value and number of users or logarithmic
+    cost (payee may choose solution depending on which method is more viable and convenient to him/her). Logarithmic
+    cost is achieved thanks to the usage of Merkle tree structure for lottery description.
+    Taking into account that Golem project should be universal solution for people from different timezones and
+    abilities to be online we were trying to minimise requirements for users to be online at a specific point of time.
+    The main requirement is for a payer to be online at some time between 2 minutes and half an hour after initializing
+    the lottery to capture a random value. Lottery however will still be valid and finalized if it's not possible.
+    We also have included a lottery agent mechanism that allows users to receive most of their reward without having
+    any starting funds for messages.
+
+    We think that proposed solution can be used not only in Golem project but also in other one-to-many nanopayments
+    scenarios in the future
+
 \begin{thebibliography}{9}
 \bibitem{ALARM} Ethereum Alarm Clock contract website, \url{http://www.ethereum-alarm-clock.com/}.
 \bibitem{ANDRESEN} Andresen, Gavin. \textit{"Back-of-the-envelope calculations for marginal cost of transactions"},
@@ -1289,10 +1352,56 @@
 
 \section{Probabilities}
 
-\begin{figure}
-\centering
+    Let's examine how quickly a lottery participant can receive her remuneration for work. For simplicity let's assume
+    that one person always count similar task with the same number of compute users that do the same amount of work
+    for the same rates. Therefore we can model a lottery as a Bernoulli trial. Probability of success in this trial is
+    equal to $1/n$ where $n$ is a number of participant. There prize is equal to $v$, where one person reward for a
+    task should be $v/n$. Therefore a participant expects to receive a reward after $n$ lotteries.
 
-\includegraphics[scale=0.6]{geo.pdf}
-\end{figure}
+    The probability distribution of the number of lotteries before first winning is a geometric distribution with
+    $p = 1/n$. Probability that a user will have to take part in $k$ lotteries before winning for a first time is
+    equal to
+    \begin{displaymath}
+	    P(X = k) = \frac{1}{n} \cdot (1 - \frac{1}{n})^{k-1}
+	\end{displaymath}
+
+    Therefore probability that she receive payment before this time is above 63\%, the probability that she has to wait
+    no longer than $2 \cdot n$ lotteries  is  above $86\%$. See figures \ref{fig:geo} and \ref{fig:geo100} for details.
+
+    \begin{figure}
+        \centering
+        \includegraphics[scale=0.6]{geo.pdf}
+        \caption{Plot illustrates what is a probability of waiting $k$ lotteries for a first pize, when 10 participants
+        takes part in every lottery}
+        \label{fig:geo}
+    \end{figure}
+
+    \begin{figure}
+        \centering
+        \includegraphics[scale=0.6]{geo100.pdf}
+        \caption{Plot illustrates what is a probability of waiting $k$ lotteries for a first pize, when
+        100 participants take part in every lottery}
+        \label{fig:geo100}
+    \end{figure}
+
+    Let's now examine how high is the probability of receiving a whole earned amount in a long run. If a user took part
+    in $k$ lotteries, than his expected income should be equal to $k/n$. We would like to know what is a probability
+    of receiving at least  80\% of this value. We can use a binomial cumulative distribution function for this.
+    The probability can be described with a formula
+    \begin{displaymath}
+        1 - F((\frac{k}{n})\cdot 80\%, k, \frac{1}{n}) + f((\frac{k}{n})\cdot 80\%, k, \frac{1}{n}))
+    \end{displaymath}
+    where f is binomial probability mass function and F is binomial cumulative distribution function.
+
+    For 50 lotteries the probability is $\sim$75\%  and for 300 above $90\%$. See figure \ref{fig:prob} for details.
+
+
+    \begin{figure}
+        \centering
+        \includegraphics[scale=0.6]{prob.pdf}
+        \caption{Plot illustrates what is a probability of receiving at least 80\% of expected income after $k$
+        lotteries when 10 participants take part in every lottery}
+        \label{fig:prob}
+    \end{figure}
 
 \end{document}
