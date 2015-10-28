@@ -228,15 +228,27 @@
     can be easily implemented in~smart contracts.
 
     Some of~the~problems listed above~may be solved by~smart contracts provided by~Ethereum community independent of
-    Golem. For example:
-    \begin{itemize}
-        \item RANDAO (\cite{RANDAO}, \cite{RANDAO2}) is~a~contract that~generates random numbers as a~function of
-            user's input. Users are paid for~providing inputs with~money paid by~users that~consume random numbers.
-        \item Ethereum Alarm Clock (\cite{ALARM}) allows users to~schedule a~contract call for~a specified future
-            block. Users pay for~scheduling their actions and~get paid for~executing other users' actions on~time.
-    \end{itemize}
+    Golem. For example, there exist preliminary implementations of \textsc{randao} (RANdom generating Decentralized Autonomous
+    Organization) which generate random numbers from users' input. Users are paid for providing inputs with
+    money paid by users that consume random numbers. Of the two \textsc{randao} implementations we are aware of, the one at
+    \url{https://github.com/dennismckinnon/Ethereum-Contracts/tree/master/RANDAO} is compatible with obsolete POC5
+    version of Ethereum and seems to be abandoned, the other~one at \url{https://github.com/randao/randao/} is more
+    up-to-date.
 
-    We may benefit from~using solutions developed by~members of~Ethereum community. We also keep in~mind that
+    Another smart contract that can be useful for our purposes is the Ethereum Alarm Clock
+    (\url{http://www.ethereum-alarm-clock.com/}) that allows users to~schedule a~contract call for~a specified future block.
+    Users pay for~scheduling their actions and~get paid for~executing other users' actions on~time.
+
+    Both the \textsc{randao} contracts and the Alarm Clock contract rely on a two-sided network effect:
+    users on the demand side (requesting random numbers or scheduling message calls) rely on users on the supply side
+    (providing input or executing scheduled calls), but users on the supply side will participate only if there is
+    enough users on the demand side to provide adequate financial incentive. At this point it is hard to tell whether 
+    the userbase for these contracts will be big enough to make them useful.
+
+    In Section~\ref{sec:randao} we discuss problems with solutions that produce random values based solely on user input,
+    such as \textsc{randao}.
+    
+    In future we may benefit from other solutions developed by~members of~Ethereum community. We also keep in~mind that
     Ethereum still evolves and~new features may appear in~core Ethereum.
 
 \subsection{Payment schemes in Ethereum}
