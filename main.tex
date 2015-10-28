@@ -14,7 +14,8 @@
 \usepackage{pgfplots}
 \pgfplotsset{compat=1.11}
 
-\newcommand{\BTC}{BTC}
+\newcommand{\BTC}{\textsc{btc}}
+\newcommand{\hash}[1]{\mathtt{hash}({#1})}
 
 \title{A~Probabilistic Micropayment Scheme for~Golem}
 \author{Golem Team (\texttt{golem@imapp.pl})}
@@ -22,7 +23,7 @@
 \newtheorem*{dfnt}{Definition}
 
 \newtheorem*{exmp}{Example}
-\setlength{\parskip}{.6em}
+%\setlength{\parskip}{.6em}
 
 \begin{document}
 \maketitle
@@ -114,18 +115,17 @@
     for~each of~the~participants. In this case, the~flat fee of~0.00001 \BTC{} for~"dust" transactions applies only
     once to~the~whole transaction, so this  is~not an~issue. However, the~size of~the~transaction in~bytes grows with
     each output and~Bitcoin also has fees for~large transactions: the~default charge  is~0.0001 \BTC{} per~1000 bytes.
-    Using the~formula for~approximating transaction size from~http://bitcoinfees.com/\cite{BITFEE}:
+    Using the~formula for~approximating transaction size from~\cite{BITFEE}:
     \begin{displaymath}
-	    \text{\texttt{transaction\_size}} = 148 * \text{\texttt{number\_of\_inputs}} +
-	    34 * \text{\texttt{number\_of\_outputs}} + 10.
-	\end{displaymath}
-    We may estimate that~a~transaction with~100 payees will cost at~least \$0.1 and~the~cost will rise as the~coins
+      \texttt{transaction\_size} = 148 * \texttt{number\_of\_inputs} + 34 * \texttt{number\_of\_outputs} + 10
+    \end{displaymath}
+    we may estimate that~a~transaction with~100 payees will cost at~least \$0.1 and~the~cost will rise as the~coins
     become fragmented and~require a~large number of~inputs. However, as fees in~Bitcoin are~market-based rather than
     hard coded, miners may at~some point start requiring higher fees for~processing transactions \cite{KASKALOGLU}.
-    According to~some estimates (\cite{ANDRESEN}) miners should require a~fee of
+    According estimates in \cite{ANDRESEN}, miners should require a~fee of
     at~least 0.0032 \BTC{} ($\sim$ \$0.8) for~including each 1000 bytes in~a~block), to~compensate for~the~fact that
-    a~larger block  is~more likely to~be orphaned. Finally, we should point out that~a~receiver of~"dust" payments will
-    bear the~cost of~spending the~tiny coins she receives, due to~higher fees for~transactions with~large number of
+    a~larger block  is~more likely to~be orphaned. Finally, we should point out that receivers of~"dust" payments will
+    bear the~cost of~spending the~tiny coins they receive, due to~higher fees for~transactions with~large number of
     inputs. This may discourage potential users from~participating in~Golem. For these reasons, Bitcoin transactions
     with~multiple outputs may be suitable for~tasks with~a~relatively high value (say above~\$10) or small number
     of~participants. For other scenarios a~different payment scheme has to~be used.
@@ -136,19 +136,20 @@
     or ChangeTip \cite{CHANGETIP} but they rely on~a~trusted third-party that~processes transactions off-chain,
     which~we definitely want to~avoid in~Golem.
 
-
 \subsection{Probabilistic payments schemes}
+
     We next turn our attention to~probabilistic payment schemes. The~idea  is~that instead of~paying \$0.01 directly,
     the~payer issues a~"lottery ticket" for~a~lottery with~\$1 prize with~a~$1/100$ chance of~winning. The~expected
     value of~such ticket is~\$0.01. The~advantage is~that on~average only one ticket in~100 will~lead to~an actual
     transaction. Such scheme is~proposed e.g. in~\cite{RIVEST} and~\cite{WHEELER}.
     A~possible implementation of~this scheme may use cryptographic hash functions, for~example SHA-3. First, both
     the~payer and~the~recipient draw (or choose) their numbers $n_P$ and~$n_R$, respectively.
-    Both parties initially keep their numbers secret. Then the~recipient reveals $hash(n_R)$. In the~next step,
-    the~payer reveals $hash(n_P)$. Finally, both parties reveal their numbers (in any order) and~use them to~decide
-    if~the~recipient receives the~prize: the~recipient wins if~and~only if~$n_P = n_R \mod N$, where $1/N$ is
+    Both parties initially keep their numbers secret. Then the~recipient reveals $\hash{n_R}$, the hash of $n_R$.
+    In the~next step the~payer reveals $\hash{n_P}$. Finally, both parties reveal their numbers (in any order)
+    and~use them to~decide if~the~recipient receives the~prize: the~recipient wins if~and~only if~$n_P = n_R \mod N$,
+    where $1/N$ is 
     the~probability of~winning. Note that~even if~the~recipient learns $n_P$ before~revealing $n_R$, she cannot change
-    her choice of~$n_R$ since~she~committed to~the~original choice by~revealing $hash(n_R)$ and~it is~considered
+    her choice of~$n_R$ since~she~committed to~the~original choice by~revealing $\hash{n_R}$ and~it is~considered
     unfeasible to~find another number with~the~same hash.
 
     Obviously, this probabilistic procedure does not guarantee that~the~Golem node is~fairly remunerated if~it only
@@ -175,8 +176,9 @@
     In the~rest of~this paper we describe and~compare several possible payment schemes (most of~them briefly) in~the
     context of~Ethereum platform.
 
-\subsection{Ethereum}
-    Ethereum (\cite{ETHEREUM}) is~a~decentralized, blockchain-based crypto currency system, but also a~platform
+\section{Ethereum}
+    
+    Ethereum \cite{ETHEREUM} is~a~decentralized, blockchain-based crypto currency system, but also a~platform
     for~development of~distributed applications. In Ethereum it is~possible to~implement arbitrary complex rules
     required by~a~payment scheme as \textbf{smart contracts} in~a~high-level programming language (we use Solidity
     \cite{SOLIDITY}, in~this paper).
@@ -237,55 +239,54 @@
     We may benefit from~using solutions developed by~members of~Ethereum community. We also keep in~mind that
     Ethereum still evolves and~new features may appear in~core Ethereum.
 
-    We estimate the~cost (in terms of~transaction fees) of~several payment schemes implemented in~Ethereum:
+\subsection{Payment schemes in Ethereum}
 
-    \begin{enumerate}
-        \item \textbf{Direct transfer (with~batching).}
-        This is~a~naive approach in~which the~requesting node makes a~transfer to~each compute node participating
-        in~the~task.
-        Simple transfer costs 21 000 gas units for~every user, which~is~about \$0.001 at~the~time of~this writing.
-        \footnote{As of~13 Oct. 2015 average gas price is~$\sim$ 55 Gwei = $5.5 \cdot 10^{-8}$ eth, and~1 eth is
-        $\sim$\$0.6.}
-        We also consider a~variant that~uses batching\cite{BUTERIN} to~pack all payments in~one transaction.
-        In this case the~cost of~sending ether is~9000 gas units per~node plus the~cost of~sending all data
-        to~the~contract (min. 2000 gas per~node). With current gas prices this method gives transaction fees
-        below~5\% for~payments of~\$0.01 or more. To handle tasks with~lower payments to~a~single recipient and~to
-        account for~fluctuations of~gas price we have to~find a~better method.
-	    \item \textbf{Subaccounts.}
-        Another approach is~to create a~smart contract that~keeps an~account balance for~every Golem node.
-        Every new user must register her account in~the~contract and~put some ether in~contract storage (with~user
-        address as the~key and~ether amount as the~value). In the~payment step, the~requester sends a~list of~payees
-        and~amounts to~the~contract and~the~accounts of~the~payees are increased by~the~specified amounts.
-        User can pay out only from~her own account. In this scenario, the~cost of~a~single transaction is~5000 gas
-        units per~recipient (for modifying the~storage) plus the~cost of~sending all data to~the~contract plus the
-        cost of~additional integrity checks (user must send enough ether etc.).
-	    \item \textbf{Lottery.}
-        This is~a~probabilistic approach in~which the~requester organizes a~lottery in~which only one compute node
-        wins. In this scenario the~cost is~generated mainly by~the~size of~data that~needs to~be transferred to
-        the~contract. This approach is~described in~Section \ref{sec:lottery}.
-    \end{enumerate}
+    In this section we estimate the~cost (in terms of~transaction fees) of~several payment schemes implemented in~Ethereum:
+
+    \paragraph{Direct transfer (with~batching).}
+    This is~a~naive approach in~which the~requesting node makes a~transfer to~each compute node participating in~the~task.
+    Simple transfer costs 21 000 gas units for~every user, which~is~about \$0.001 at~the~time of~this writing.\footnote{%
+      As of~13 Oct. 2015 average gas price is~$\sim$ 55 Gwei = $5.5 \cdot 10^{-8}$ eth, and~1 eth is $\sim$\$0.6.}
+    We also consider a~variant that~uses batching\cite{BUTERIN} to~pack all payments in~one transaction.
+    In this case the~cost of~sending ether is~9000 gas units per~node plus the~cost of~sending all data
+    to~the~contract (min. 2000 gas per~node). With current gas prices this method gives transaction fees
+    below~5\% for~payments of~\$0.01 or more. To handle tasks with~lower payments to~a~single recipient and~to
+    account for~fluctuations of~gas price we have to~find a~better method.
+
+    \paragraph{Subaccounts.}
+    Another approach is~to create a~smart contract that~keeps an~account balance for~every Golem node.
+    Every new user must register her account in~the~contract and~put some ether in~contract storage (with~user
+    address as the~key and~ether amount as the~value). In the~payment step, the~requester sends a~list of~payees
+    and~amounts to~the~contract and~the~accounts of~the~payees are increased by~the~specified amounts.
+    User can pay out only from~her own account. In this scenario, the~cost of~a~single transaction is~5000 gas
+    units per~recipient (for modifying the~storage) plus the~cost of~sending all data to~the~contract plus the
+    cost of~additional integrity checks (user must send enough ether etc.).
+
+    \paragraph{Lottery.} 
+    This is~a~probabilistic approach in~which the~requester organizes a~lottery in~which only one compute node
+    wins. In this scenario the~cost is~generated mainly by~the~size of~data that~needs to~be transferred to
+    the~contract. This approach is~described in~Section \ref{sec:lottery}.
 
     We also mention two additional payment schemes based on~Ethereum but do not attempt to~estimate their cost:
+    
+    \paragraph{Micropayment channels.}
+    Micropayment channels in~context of~Ethereum are described in~\cite{BUTERIN}. They allow the~user to~send
+    transactions off-chain. Unfortunately, as in~the~case of~Bitcoin micropayment channels \cite{BITCOINJ} this
+    solution is~designed for~many 1-1 microtransactions between two given parties. The~cost of~opening a~channel
+    is~quite large (at least the~cost of~adding 5 new storage fields 20 000 gas each) and~channel endpoints might
+    never cooperate again. Additionally, a~micropayment channel requires an~escrow, so if~a~requester has to~open
+    many channels the~deposits may sum up to~a~large amount.
 
-    \begin{enumerate}
-	    \item \textbf{Micropayment channels}
-        Micropayment channels in~context of~Ethereum are described in~\cite{BUTERIN}. They allow the~user to~send
-        transactions off-chain. Unfortunately, as in~the~case of~Bitcoin micropayment channels \cite{BITCOINJ} this
-        solution is~designed for~many 1-1 microtransactions between two given parties. The~cost of~opening a~channel
-        is~quite large (at least the~cost of~adding 5 new storage fields 20 000 gas each) and~channel endpoints might
-        never cooperate again. Additionally, a~micropayment channel requires an~escrow, so if~a~requester has to~open
-        many channels the~deposits may sum up to~a~large amount.
-	\item \textbf{Bank-set approach.}
-        Most micropayments protocols for~P2P networks require some sort of~a~centralized institution (bank) that~is
-        in~charge of~approving transactions \cite{JAIN}. One idea is~to replace this institution with~a~set of~peers
-        (an approach similar to~the~Karma protocol \cite{VISHNUMURTHY}) that~keep track of~transactions and~user accounts.
-        The~requester pays the~total amount of~ether for~each task into~one joint Ethereum contract.
-        If~a~user wants to~pay out her share from~her account, the~nodes in~the~bank-set vote for~or against the~payout.
-        Unfortunately it is~not clear how to~choose bank-set representatives, how Ethereum contract should know
-        current representatives, how should they vote and~how to~design a~reward/punishment mechanism
-        for~representatives. At the~moment, this solution seems to~be too complicated to~be practical.
+    \paragraph{Bank-set approach.}
+    Most micropayments protocols for~P2P networks require some sort of~a~centralized institution (bank) that~is
+    in~charge of~approving transactions \cite{JAIN}. One idea is~to replace this institution with~a~set of~peers
+    (an approach similar to~the~Karma protocol \cite{VISHNUMURTHY}) that~keep track of~transactions and~user accounts.
+    The~requester pays the~total amount of~ether for~each task into~one joint Ethereum contract.
+    If~a~user wants to~pay out her share from~her account, the~nodes in~the~bank-set vote for~or against the~payout.
+    Unfortunately it is~not clear how to~choose bank-set representatives, how Ethereum contract should know
+    current representatives, how should they vote and~how to~design a~reward/punishment mechanism
+    for~representatives. At the~moment, this solution seems to~be too complicated to~be practical.
 
-\end{enumerate}
 \section{Lottery}
 \label{sec:lottery}
 
