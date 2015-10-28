@@ -1,4 +1,6 @@
-clear
+set terminal pdf
+set output "payments.pdf"
+
 log2(x) = log(x)/log(2)
 T = 21000
 I = 2176
@@ -17,7 +19,6 @@ set xlabel "number of users"
 set ylabel "gas used"
 set yrange [0.0:600000.0]
 set format y "%.0s%c"
-set output "payments.pdf"
 plot [0:40] batch(x) lt -1 pi -6 pt 7 title "batch", \
             subaccount(x) lt -1 pi -4 pt 6 title "subaccount", \
             check(x) lt -1 title "lottery check", \
