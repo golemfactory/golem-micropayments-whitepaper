@@ -6,11 +6,12 @@ all: $(FILE).pdf
 .PHONY: clean
 
 clean:
-	rm -f *.aux *.out *.log *.bbl *.blg
+	rm -f *.pdf *.aux *.out *.log *.bbl *.blg
 
 $(FILE).pdf: $(FILE).tex $(GRAPHS)
 	pdflatex $(FILE)
 	pdflatex $(FILE)
+	rm -f *.aux *.out *.log *.toc *.bbl *.blg 
 
 geo10.pdf: geo.plt
 	gnuplot -e "N = 10" geo.plt
