@@ -20,7 +20,8 @@
 \usepackage{pgfplots}
 \pgfplotsset{compat=1.11}
 
-\newcommand{\BTC}{\textsc{btc}}
+\newcommand{\BTC}{BTC}%{\textsc{btc}}
+\newcommand{\ETH}{ETH}%{\textsc{eth}}
 \newcommand{\hash}[1]{\mathtt{hash}({#1})}
 \newcommand{\lotteryhash}[1]{h({#1})}
 \newcommand{\randao}{\textsc{randao}}
@@ -261,9 +262,10 @@
     In future we may benefit from other solutions developed by~members of~Ethereum community. We also keep in~mind that
     Ethereum still evolves and~new features may appear in~core Ethereum.
 
-\subsection{Payment schemes in Ethereum}
+    \subsection{Payment schemes in Ethereum}
+    \label{sec:ethereum-schemes}
 
-    In this section we estimate the~cost (in terms of~transaction fees) of~several payment schemes implemented in~Ethereum:
+    In this section we consider several payment schemes that can be implemented in~Ethereum:
 
     \paragraph{Direct transfer (with~batching).}
     This is~a~naive approach in~which the~requesting node makes a~transfer to~each compute node participating in~the~task.
@@ -458,12 +460,14 @@
     claimed to~be a~winner, anyone may send the~\texttt{lotteryCheck} message which~will transfer part of~the~reward,
     say 10\%, to~the~sender of~the~message and~the~rest to~the~winner, and~will erase the~contract from~Ethereum
     storage.
+
 \section{Lottery Protocol Specification}
 \label{sec:lottery-protocol}
     The~lottery contract is~implemented in~Solidity \cite{SOLIDITY}, a~high-level language compiled to~machine code of
     the~Ethereum Virtual Machine\cite{ETHERDEV}. A~contract in~Solidity consists of~a~number of~functions, each
-    function is~a~entry point to~the~contract code. Below we list Solidity functions that~represent messages
-    in~the~lottery protocol. The~types of~message arguments are as follows:
+    function is~a~entry point to~the~contract code. A message sent to the contract identifies a function to be called
+    and specifies values of the function's arguments. Below we list Solidity functions that correspond to messages
+    in the~lottery protocol. The~following data types of~arguments are used:
     \begin{itemize}
         \item \texttt{uint} (an alias for~\texttt{uint256}) is~the~type of~256 bit unsigned integers,
         \item \texttt{bytes32} is~the~type of~fixed-size arrays of~32 bytes,
@@ -763,36 +767,57 @@
     the storage costs $20\;000$ gas, so using 2 words for \verb!LotteryData!
     instead of 5 allows us to cut the cost of \verb!initLottery! in half.
 
-    When estimating gas use (and cost in Ethers) of the messages we
+    When estimating gas use (and cost in ethers) of the messages we
     assume the optimization has been done, even though for simplicity
     in Appendix~\ref{sec:code} we show contract code before optimization.
     
 \section{Cost comparison}
 \label{sec:cost}
-    At the~time of~this writing (13 Oct. 2015) the~cost of~a~gas unit is~approximately  $5.5 \cdot 10^{-8}$ ETH, but
-    we have to~take into~account that~this value will probably increase in~the~future. At the~beginning it was
-    estimated to~be equal $1 \cdot 10^{-5}$ ETH. Current price of~one ether is~approx. \$0.6, but taking into~account
-    the~history of~bitcoin price this value will probably change in~the~future. Therefore the~only fully reliable
-    method of~estimation transaction cost is~to compare gas usage in~a~single simple transfer transaction.
+    In this section we compare transaction fees in payment schemes
+    considered in Section~\ref{sec:ethereum-schemes} for varying
+    number of users.  For each scheme we estimate the total amount of
+    gas required to pay for a single task.\marginpar{cost for whom?}
+    We also give the corresponding cost in USD currency, using the
+    gas/\ETH{} and \ETH{}/USD rates at the~time of this~writing.%
+    \footnote{As of 13 Oct.\ 2015, average
+      gas price is approximately $5.5 \cdot 10^{-8}$ \ETH{} and one
+      ether costs approximately \$0.6}%
+    As the \ETH{}/USD rate changes quickly (and will probably do so in
+    the future, taking into account the history of Bitcoin price),
+    transaction costs in any fiat currency should be taken as very
+    rough estimates.
 
-    Estimated cost (neglecting implementation details)
-
-    \begin{tabular}{|p{8em}|p{5em}|p{8em}|p{5em}|p{5em}|p{5em}|}
-        \hline
-        Method & Constant cost & Per user cost & Cost for~10 users & Cost for~100 users & Cost for~1000 users \\ \hline
-        Simple transfer & 0 & 21 000 & 210 000 & 2.1 mln & 21 mln \\ \hline
-        Batching & 21 000 & $\sim$11 000 & $\sim$ 130 000 & $\sim$ 1.2 mln & $\sim$ 12 mln \\ \hline
-        Subaccount & 21 000 & $\sim$ 7000 & $\sim$ 100 000 & $\sim$700 000 & $\sim$ 7 mln \\ \hline
-        Lottery (check) & $\sim$ 150 000 & $\sim$ $\log_2(n)/n \cdot 2500 $ & $\sim$ 150 000 & $\sim$ 155 000 &
-        $\sim$ 160 000 \\ \hline
-        Lottery (winner) & $\sim$ 150 000 & 0 & $\sim$ 150 000 & $\sim$ 150 000 & $\sim$ 150 000 \\ \hline
-    \end{tabular}
+    For calculating the required amount of gas we take into account the
+    following operations:
+    \begin{itemize}
+    \item sending a message to a contract ($21\;000$ gas),
+    \item tranfering data to a contract ($68$ gas for one byte),
+    \item transferring ether to other account in a contract ($9\;000$ gas),
+    \item writing data to storage ($20\;000$ gas for each 256-bit word),
+    \item reading data from storage ($5\;000$ gas for each 256-bit word),
+    \item clearing data in storage ($10\;000$ gas is \textbf{refunded} for each 256-bit word),
+    \item computing sha3 hash ($222$ gas for hashing a 256-bit word).
+    \end{itemize}
+    Other operations have negligible cost.
 
     \begin{figure}
-        \centering
-        \includegraphics[scale=1.0]{payments.pdf}
-        \caption{Transaction cost for~different payment methods}
-        \label{fig:payment}
+      \begin{tabular}{p{9em}p{4em}p{7em}p{6em}p{6em}p{6em}}
+        \hline
+        Method & Constant cost & Cost per user& Cost for~10 users & Cost for~100 users & Cost for~1000 users \\ \hline
+        % Direct transfer & 0 & 21 000 & 210 000 & 2.1 mln & 21 mln \\ \hline
+        Direct transfer     & 21 000  & 11 000 & 130 000 & 1.1 mln & 11.2 mln \\ \hline
+        Subaccounts         & 21 000  &  7 000 &  93 000 & 740 000 &  7.2 mln \\ \hline
+        Lottery (check)     & 140 000 & $\log_2(n)/n \cdot 2700 $ & 150 000 & 155 000 & 165 000 \\ \hline
+        Lottery (optimistic)& 150 000 & 0 & 150 000 & 150 000 & 150 000 \\ \hline
+      \end{tabular}
+      \caption{Transaction costs for different payment methods, in tabular form.}
+    \end{figure}
+
+    \begin{figure}
+      \centering
+      \includegraphics[scale=1.0]{payments.pdf}
+      \caption{Transaction costs for~different payment methods.}
+      \label{fig:payment}
     \end{figure}
 
 
