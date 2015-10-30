@@ -790,7 +790,7 @@
 
     \begin{figure}
         \centering
-        \includegraphics[scale=0.6]{payments.pdf}
+        \includegraphics[scale=1.0]{payments.pdf}
         \caption{Transaction cost for~different payment methods}
         \label{fig:payment}
     \end{figure}
@@ -1134,71 +1134,41 @@
     Note that~the~height of~any Merkle tree for~$L$, that~is~the~maximum depth of~any leaf, is~equal to
     $\text{ceil}(\log_2 P)$.
 
-    Now, a~\textbf{hash of~$L$} is~defined as $h(L) = hash(hash(B(L)), h(M(L)))$, where $B(L)$ is~the~binary encoding of~$L$
+    A~\textbf{hash of~$L$} is~defined as $h(L) = \hash{\hash{B(L)), h(M(L)}}$, where $B(L)$ is~the~binary encoding of~$L$
     and~$h(M(L))$ is~the~label of~the~root of~$M(L)$.
 
     A~winner certificate $C = (a, R, r, b_1, \ldots, b_d, w_1, \ldots, w_d)$ consists of
     \begin{itemize}
-        \item 160-bit word $a$ (address of~the~proposed winner),
-        \item 32-bit words $R$ and~$r$,
-        \item a~sequence $b_1, \ldots, b_d$ of~bits, with~$d \geq 0$,
-        \item a~sequence $w_1, \ldots, w_d$ of~256-bit words.
+    \item an Ethereum address $a$ of~the~proposed winner,
+    \item S-bit words $R$ and~$r$ encoding respectively the beginning and the length of
+      the range within which the S-bit random value must fall,
+    \item a~sequence $b_1, \ldots, b_d$ of~bits, with~$d \geq 0$,
+    \item a~sequence $w_1, \ldots, w_d$ of~256-bit words.
     \end{itemize}
-
-    Given $C$ we define $h_d = hash(a, R, r)$ and, for~$i = 1, .., d$, $h_{i-1} = hash(h_i, w_i)$ if~$b_i = 0$ and
-    $h_{i-1} = hash(w_i, h_i)$ otherwise.
-    Let $x$ be a~32-bit random value. $C$ is~\textbf{valid} for~$s$ if
+    %
+    Given $C$ we define the sequence $h_d, h_{d-1}, \ldots, h_0$ of 256-bit words as follows:
+    \begin{align*}
+      h_d    &= \hash{a, R, r} \\
+      h_{i-1} &= \begin{cases}
+        \hash{h_i, w_i} &\text{if}\ b_i = 0\\
+        \hash{w_i, h_i} &\text{if}\ b_i = 1
+      \end{cases}
+    \end{align*}
+    %
+    Let $x$ be a~S-bit random value. $C$ is~\textbf{valid} for~$x$ if
     \begin{displaymath}
-        R \leq x < R + r  \text{ and~} hash(hash(B(L)), h_0) = h(L).
+      R \leq x < R + r  \quad\text{and}\quad \hash{\hash{B(L)}, h_0} = h(L).
     \end{displaymath}
-
-    In our concrete implementation a~winner certificate is~represented by~the~following Solidity struct:
-
-    \begin{center}
-        \begin{tabular}{ll}
-            \texttt{struct WinnerCertificate \{} &  \\
-		    \qquad \texttt{address winner;} &  \texttt{// winner's address}\\
-		    \qquad \texttt{uint32 rangeStart;} & \texttt{// beginning of~the~range}\\
-		    \qquad \texttt{uint32 rangeLength;} & \texttt{// length of~the~range}\\
-		    \qquad \texttt{bool[] path;} & \texttt{// encoding of~the~leaf as a~sequences $b_1, \ldots, b_d$}\\
-		    \qquad \texttt{bytes32[] values;} & \texttt{// values $w_1, \ldots, w_d$}\\
-    		\texttt{\}}
-        \end{tabular}
-    \end{center}
-
-    The~algorithm that~checks the~validity of~a~certificate may be coded as the~following Solidity function,
-    in~which \texttt{rand} is~the~random value ($x$ in~the~description above), \texttt{lotteryHash} is~$\lotteryhash{L}$
-    and~\texttt{descriptionHash} is~$hash(B(L))$:
-
-    \begin{center}
-        \begin{tabular}{l}
-            \texttt{function checkCertificate(uint32 rand, bytes32 lotteryHash, bytes32 descriptionHash, }\\
-            \qquad\qquad\qquad\qquad\qquad\qquad\qquad \texttt{WinnerCertificate cert) internal returns (bool) \{ }\\
-            \qquad \texttt{// Check if~random val falls into~the~range}\\
-            \qquad \texttt{if (rand < cert.rangeStart || rand >= cert.rangeStart + cert.rangeLength)}\\
-            \qquad\qquad \texttt{return false;}\\
-            \\
-            \qquad\texttt{// Initially, h is~the~value stored in~the~leaf ($h_d$)}\\
-            \qquad \texttt{bytes32 h = bytes32(uint256(cert.winner) << 64}\\
-            \qquad\qquad\qquad\qquad \texttt{+ uint256(cert.rangeStart) << 32}\\
-            \qquad\qquad\qquad\qquad \texttt{+ cert.rangeLength}\\
-            \qquad\qquad\qquad\qquad \texttt{);}\\
-            \\
-            \qquad \texttt{// Update h with~hashes $h_{d-1}, \ldots, h_0$}\\
-            \qquad\texttt{for (uint i = cert.path.length; i > 0; i--) \{}\\
-            \qquad\qquad \texttt{if (cert.path[i-1] == false)}\\
-            \qquad\qquad\qquad \texttt{h = sha3(h, cert.values[i-1]);}\\
-            \qquad\qquad \texttt{else}\\
-            \qquad\qquad\qquad\texttt{h = sha3(cert.values[i-1], h);}\\
-            \qquad\texttt{\}}\\
-            \\
-            \qquad\texttt{// Mix with~description hash}\\
-            \qquad\texttt{h = sha3(descriptionHash, h);}\\
-            \\
-            \qquad\texttt{return h == lotteryHash;}\\
-            \texttt{\}}
-        \end{tabular}
-    \end{center}
+    %
+    A Solidity implementation of the algorithm that checks the validity of a winner certificate is
+    coded in Appendix~\ref{sec:code} as the function \verb!checkCertificate! with the following signature:
+    \begin{quote}
+      \verb|function checkCertificate(uint32 rand, bytes32 lotteryHash, bytes32 descriptionHash,|\\
+      \verb|                          WinnerCertificate cert) returns (bool)|
+    \end{quote}
+    The argument \verb|rand| is~the~random value ($x$ in~the~description above, with precision $S = 32$),
+    \verb|lotteryHash| is~$\lotteryhash{L}$, \verb|descriptionHash| is~$\hash{B(L)}$ and \verb|cert| is
+    a struct encoding a winner certificate.
 
 \section{Contract code}
 \label{sec:code}
