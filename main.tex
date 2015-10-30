@@ -740,19 +740,33 @@
            \end{enumerate}
     \end{enumerate}
 
-    \paragraph{Further optimization.} In the~final version of~the~contract we may keep maturity and~deadline in
-        the~same field. Both values has the~same size and~they are never both required in~the~same time. Deadline is
-        only set when someone sends \texttt{lotteryWinner} message and~after that~maturity is~no longer needed.
+    \paragraph{Storage size optimization.}
+    In the final version of the contract we optimize the storage size
+    of \verb!LotteryData!. The values of both maturity and deadline
+    can be kept in the same field of the struct, as they have the same
+    size and are never required at the same time: deadline is only set
+    when someone sends \verb!lotteryWinner! message and at this point
+    maturity is no longer needed.
+    %
+    Moreover, we can keep payer address and winner address in the same
+    field. Payer address is only required for returning payer
+    deposit. When winner address is being set, the random value must
+    already be fixed and the deposit is already returned or lost. This
+    allows us to limit size of final structure from 6 fields to 4.
+    
+    Additionally, we can pack whole struct in two 256-bit
+    words. Lottery value will be kept in one word and all the other
+    values can be packed in one storage word: 8 bytes are enough for
+    block numbers in maturity/deadline field, 4 bytes to keep random
+    value (see remarks in Appendix~\ref{sec:lottery-description}) and
+    20 bytes to keep payer/winner address.  Writing a 256-bit word to
+    the storage costs $20\;000$ gas, so using 2 words for \verb!LotteryData!
+    instead of 5 allows us to cut the cost of \verb!initLottery! in half.
 
-        Moreover, we can keep payer address and~winner address in~the~same field. Payer address is~only require to
-        return payer deposit to~the~right user. When winner address is~being set, the~random value has to~be
-        processed and~on account of~that payer deposit and~address too.
-
-        Thanks to~that we can limit size of~final structure from~6 fields to~4.  Additionally, we can pack whole struct
-        in~two storage word. Lottery value will be kept in~one and~all the~other values we can pack in~one storage
-        word: we need 4 bytes to~keep maturity/deadline fields, 4 bytes to~keep random variable and~20 bytes to~keep
-        payer / winner address.
-
+    When estimating gas use (and cost in Ethers) of the messages we
+    assume the optimization has been done, even though for simplicity
+    in Appendix~\ref{sec:code} we show contract code before optimization.
+    
 \section{Cost comparison}
 \label{sec:cost}
     At the~time of~this writing (13 Oct. 2015) the~cost of~a~gas unit is~approximately  $5.5 \cdot 10^{-8}$ ETH, but
