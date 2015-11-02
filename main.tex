@@ -109,9 +109,16 @@
     since~transaction fees they incur are in~the~order of~\$0.1, plus a~percentage of~the~transaction value
     (see e.g. \cite{FRS}).
     It seems more promising to~look at~available micropayment schemes based on~digital currencies such
-    as Bitcoin \cite{BITCOIN}.
+    as Bitcoin \cite{BITCOIN}, which we do in Section~\ref{sec:cryptocurrencies}. In Section~\ref{sec:ethereum} we
+    describe Ethereum, a platform for developing decentralized applications, and consider payment methods based
+    on Ethereum. In Section~\ref{sec:lottery} we describe the lottery payment scheme, in Section~\ref{sec:costs} 
+    we compare costs of various payment schemes based on Ethereum and in Section~\ref{sec:randomness} we discuss some
+    details of the lottery implementation. Section~\ref{sec:conclusion} contains concluding remarks. Technical
+    details are included in the Appendices~\ref{sec:lottery-description} and~\ref{sec:code}.
+    \marginpar{update}
 
 \section{Micropayments schemes for~cryptocurrencies}
+\label{sec:cryptocurrencies}    
 
     We first consider a~naive solution in~which the~requester pays each node participating in~the~computation
     with~a~separate Bitcoin transaction. Although Bitcoin transaction fees are lower than for~bank-based transactions,
@@ -186,7 +193,7 @@
     context of~Ethereum platform.
 
 \section{Ethereum}
-
+\label{sec:ethereum}
     Ethereum \cite{ETHEREUM} is~a~decentralized, blockchain-based crypto currency system, but also a~platform
     for~development of~distributed applications. In Ethereum it is~possible to~implement arbitrary complex rules
     required by~a~payment scheme as \textbf{smart contracts} in~a~high-level programming language (we use Solidity
@@ -289,7 +296,7 @@
     \paragraph{Lottery.} 
     This is~a~probabilistic approach in~which the~requester organizes a~lottery in~which only one compute node
     wins. In this scenario the~cost is~generated mainly by~the~size of~data that~needs to~be transferred to
-    the~contract. This approach is~described in~Section \ref{sec:lottery}.
+    the~contract. This approach is~described in~Section \ref{sec:lottery} and its cost is estimated in Section~\ref{sec:costs}.
 
     We also mention two additional payment schemes based on~Ethereum but do not attempt to~estimate their cost:
     
@@ -772,10 +779,10 @@
     in Appendix~\ref{sec:code} we show contract code before optimization.
     
 \section{Cost comparison}
-\label{sec:cost}
+\label{sec:costs}
     In this section we compare transaction fees in payment schemes
     considered in Section~\ref{sec:ethereum-schemes} for varying
-    number of users.  For each scheme we estimate the total amount of
+    number of users. For each scheme we estimate the total amount of
     gas required to pay for a single task.\marginpar{cost for whom?}
     We also give the corresponding cost in USD currency, using the
     gas/\ETH{} and \ETH{}/USD rates at the~time of this~writing.%
@@ -926,6 +933,7 @@
     by a service integrated with Golem.
 
 \section{Conclusion}
+\label{sec:conclusion}    
     In this paper we have presented several approaches to~one-to-many micropayment problem in~the~context of~the~Golem
     project. We require solution that~is~decentralized, doesn't require any trusted authority and~doesn't assume that
     a~payer makes a~series of~micropayments to~a~single recipient. We can however assume that~one recipeint will
@@ -1162,7 +1170,7 @@
     A~\textbf{hash of~$L$} is~defined as $h(L) = \hash{\hash{B(L)), h(M(L)}}$, where $B(L)$ is~the~binary encoding of~$L$
     and~$h(M(L))$ is~the~label of~the~root of~$M(L)$.
 
-    A~winner certificate $C = (a, R, r, b_1, \ldots, b_d, w_1, \ldots, w_d)$ consists of
+    A~\textbf{winner certificate} $C = (a, R, r, b_1, \ldots, b_d, w_1, \ldots, w_d)$ consists of
     \begin{itemize}
     \item an Ethereum address $a$ of~the~proposed winner,
     \item S-bit words $R$ and~$r$ encoding respectively the beginning and the length of
