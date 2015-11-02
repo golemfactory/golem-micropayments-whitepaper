@@ -285,13 +285,16 @@
     account for~fluctuations of~gas price we have to~find a~better method.
 
     \paragraph{Subaccounts.}
-    Another approach is~to create a~smart contract that~keeps an~account balance for~every Golem node.
-    Every new user must register her account in~the~contract and~put some ether in~contract storage (with~user
-    address as the~key and~ether amount as the~value). In the~payment step, the~requester sends a~list of~payees
-    and~amounts to~the~contract and~the~accounts of~the~payees are increased by~the~specified amounts.
-    User can pay out only from~her own account. In this scenario, the~cost of~a~single transaction is~5000 gas
-    units per~recipient (for modifying the~storage) plus the~cost of~sending all data to~the~contract plus the
-    cost of~additional integrity checks (user must send enough ether etc.).
+    Another approach is~to create a~smart contract that~keeps in its storage account balances of~every Golem node,
+    as a map with user addresses as keys and ether balances as values. 
+    To receive payments, users must first register their subaccounts in~the~contract, which is an one time investment
+    of approximately $40\;000$ gas.
+    In the~payment step, the~payer sends a~list of~recipients and payment values to the~contract, and
+    the contract increments each recipient's subaccount balance by the specified payment value. 
+    Users can transfer ether from their subaccounts to ``real'' Ethereum accounts at any time, covering the cost of the transfer.
+    In this scenario, the~cost of~a~single transaction is~$5\;000$ gas units per~recipient (for modifying the~storage)
+    plus the~cost of~sending all data to~the~contract and additional integrity checks (see Section~\ref{sec:costs} for
+    more accurate cost estimates).
 
     \paragraph{Lottery.} 
     This is~a~probabilistic approach in~which the~requester organizes a~lottery in~which only one compute node
