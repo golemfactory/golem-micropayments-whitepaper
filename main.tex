@@ -787,7 +787,70 @@
     considered in Section~\ref{sec:ethereum-schemes} for varying
     number of users. For each scheme we estimate the total amount of
     gas required to pay for a single task.\marginpar{cost for whom?}
-    We also give the corresponding cost in USD currency, using the
+    For calculating the required amount of gas we take into account the
+    following operations:
+    \begin{itemize}
+    \item sending a message to a contract ($21\;000$ gas),
+    \item tranfering data to a contract ($68$ gas for one nonzero byte),
+    \item transferring ether to other account in a contract ($9\;000$ gas),
+    \item writing new storage entry ($20\;000$ gas for each nonzero 256-bit word),
+    \item modifying existing storage entry ($5\;000$ gas for each 256-bit word),
+    \item computing sha3 hash ($222$ gas for hashing a 256-bit word).
+      \marginpar{Może być tak (new entry/existing entry)?}
+    \end{itemize}
+
+    Other operations have negligible cost. The costs are summarized in Table~\ref{table:costs}
+    and shown in graphical form in Figure~\ref{fig:costs}.
+    \begin{table}
+      \begin{tabular}{p{9em}p{4em}p{7em}p{6em}p{6em}p{6em}}
+        \hline
+        Method & Constant cost & Cost per user& Cost for~10 users & Cost for~100 users & Cost for~1000 users \\ \hline
+        Direct transfer     & 21 000  & 11 000 & 130 000 & 1.1 mln & 11.2 mln \\ %\hline
+        Subaccounts         & 21 000  &  8 000 & 100 000 & 840 000 &  8.2 mln \\ %\hline
+        Lottery (check)     & 140 000 & $\log_2(n)/n \cdot 2700 $ & 150 000 & 155 000 & 165 000 \\ %\hline
+        Lottery (optimistic)& 155 000 & 0 & 155 000 & 155 000 & 155 000 \\ \hline
+      \end{tabular}
+      \caption{Transaction costs in gas for different payment methods.}
+      \label{table:costs}
+    \end{table}
+    \begin{figure}
+      \centering
+      \includegraphics[scale=1.0]{payments.pdf}
+      \caption{Transaction costs for~different payment methods, in graphical form.}
+      \label{fig:costs}
+    \end{figure}
+
+    Note that when using direct transfers, only the payer bears the
+    transaction costs, while other payment methods also incur costs
+    for the recipients: in the subaccounts approach recipients pay for
+    transferring ether to their accounts and in the lottery approach
+    the winner pays for claiming the reward. To facilitate comparison
+    between payment methods we assume that the recipients will
+    negotiate higher payments to compensate for additional costs and
+    thus effectively all transaction costs will be covered by the payer.\marginpar{Czy to ma sens?}
+
+    In the subaccounts approach the recipients decide when to transfer
+    ether from their subaccounts managed by the payment contract. Each
+    such transfer requires approximately $35\;000$ gas and we assume that
+    users on average delay the transfer long enough that the transaction
+    fee for a single task does not exceed $1\;000$ gas. Thus per-user cost
+    in the subaccount approach is estimated at $8\;000$ gas ($2\;000$ for passing
+    the recipient's address and payment value to the contract, $5\;000$ for
+    updating the balance and $1\;000$ as the amortized cost of transferring ether
+    from the subaccount).
+
+    In both variants of the lottery approach, payer fees are constant
+    ($\sim 100$k gas for initializing the lottery and capturing the
+    hash of the deciding block) independent on the number of
+    participants. The winner is free to decide which variant to choose.
+    If the number of participants does not exceed $128$ then sending \verb!lotteryCheck!
+    is the cheapest option, for larger number of participants the optimistic
+    variant has lower fees. There is however a tradeoff: optimistic approach has
+    lower transaction fees but the winner has to wait approximately 24 hours after
+    sending the \verb!lotteryWinner! message to collect the reward. 
+
+    \subsection{Costs in fiat currency}
+    We may also give corresponding costs in USD, using the
     gas/\ETH{} and \ETH{}/USD rates at the~time of this~writing.%
     \footnote{As of 13 Oct.\ 2015, average
       gas price is approximately $5.5 \cdot 10^{-8}$ \ETH{} and one
@@ -795,58 +858,32 @@
     As the \ETH{}/USD rate changes quickly (and will probably do so in
     the future, taking into account the history of Bitcoin price),
     transaction costs in any fiat currency should be taken as very
-    rough estimates.
-
-    For calculating the required amount of gas we take into account the
-    following operations:
-    \begin{itemize}
-    \item sending a message to a contract ($21\;000$ gas),
-    \item tranfering data to a contract ($68$ gas for one byte),
-    \item transferring ether to other account in a contract ($9\;000$ gas),
-    \item writing data to storage ($20\;000$ gas for each 256-bit word),
-    \item reading data from storage ($5\;000$ gas for each 256-bit word),
-    \item clearing data in storage ($10\;000$ gas is \textbf{refunded} for each 256-bit word),
-    \item computing sha3 hash ($222$ gas for hashing a 256-bit word).
-    \end{itemize}
-    Other operations have negligible cost.
-
-    \begin{figure}
-      \begin{tabular}{p{9em}p{4em}p{7em}p{6em}p{6em}p{6em}}
+    rough estimates, so we round the values up to the nearest power of ten.
+    In this approximation Table~\ref{table:costs} collapses to just two rows,
+    as shown in Table~\ref{table:costs-usd}.
+       
+    \begin{table}
+      \centering ~\\~\\  % ugly hack to force more space between table and preceeding figure
+      \begin{tabular}{lrrr} 
         \hline
-        Method & Constant cost & Cost per user& Cost for~10 users & Cost for~100 users & Cost for~1000 users \\ \hline
-        % Direct transfer & 0 & 21 000 & 210 000 & 2.1 mln & 21 mln \\ \hline
-        Direct transfer     & 21 000  & 11 000 & 130 000 & 1.1 mln & 11.2 mln \\ \hline
-        Subaccounts         & 21 000  &  7 000 &  93 000 & 740 000 &  7.2 mln \\ \hline
-        Lottery (check)     & 140 000 & $\log_2(n)/n \cdot 2700 $ & 150 000 & 155 000 & 165 000 \\ \hline
-        Lottery (optimistic)& 150 000 & 0 & 150 000 & 150 000 & 150 000 \\ \hline
+        Method              & Cost for~10 users & Cost for~100 users & Cost for~1000 users \\ \hline
+        Direct transfer/subaccounts    & ~ \$0.01          & ~ \$0.1            & ~ \$1    \\ %\hline
+        Lottery (either variant)       & ~ \$0.01          & ~ \$0.01           & ~ \$0.01 \\ \hline
       \end{tabular}
-      \caption{Transaction costs for different payment methods, in tabular form.}
-    \end{figure}
+      \caption{Transaction costs in USD for different payment methods, order-of-magnitude estimates.}
+      \label{table:costs-usd}
+    \end{table}
 
-    \begin{figure}
-      \centering
-      \includegraphics[scale=1.0]{payments.pdf}
-      \caption{Transaction costs for~different payment methods.}
-      \label{fig:payment}
-    \end{figure}
+    \subsection{So, which payment method should I use to pay for my task?}
+    Assumming the payer wants to keep transaction fees on the level of $1\%$,
+    direct transfers or subaccounts are appropriate for tasks in which
+    each participant is to be paid at least $\$0.1$, for example a
+    task worth \$1 computed by $10$ users of a task worth $\$1\;000$
+    computed by $10\;000$ users.
 
-
-    In our solution payer fees are always constant ($\sim$ 100k gas).
-    Lottery winner may then choose further methods of~receiving prize:
-    \begin{enumerate}
-        \item check message: this is~recommended message. It's cost is~proportional to~the~logarithm of~number of
-            participants. It allows user to~receive payment immediately and~is~cheaper for~lotteries with~less than 129
-            participants (i.e. most scenarios).
-        \item winner-payout message: this methods requires from~user sending two messages and~she can receives funds no
-            sooner than 24 hours after sending the~first message. It has constant cost $\sim$50k gas units.
-            This method is~cheaper for~lotteries with~more than 128 participants, we recommend it only for~a specific
-            scenarios where there will be few thousands participants.
-    \end{enumerate}
-
-    With current gas / ether prices lottery transaction cost will be below~\$0.01 regardless from~task value and~number
-    of~lottery participants. Cost comparison with~other methods can be seen on~figure \ref{fig:payment}.
-    The~cost is~seven times higher than traditional transaction, so it will be useful only  when there will be above
-    10 lottery participants.
+    A lottery must be used for tasks in which participants are to be paid less than $\$0.1$.
+    It may also be used if there are at least 20 participants and the payer wants to
+    minimize transaction fees even at the cost of using a more complex payment method.
 
 \section{Source of~randomness for~the~lottery implementation}
 \label{sec:randomness}
