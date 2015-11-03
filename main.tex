@@ -1348,10 +1348,7 @@
         \qquad\qquad\qquad\texttt{return false;}\\
         \\
         \qquad\qquad\texttt{// Initially, h is~the~value stored in~the~leaf ($h_d$)}\\
-        \qquad\qquad\texttt{bytes32 h = bytes32((uint256(cert.winner) * (2 ** 64))}\\
-        \qquad\qquad\qquad\qquad\qquad\qquad\texttt{+ (uint256(cert.rangeStart) * (2 ** 32))}\\
-        \qquad\qquad\qquad\qquad\qquad\qquad\texttt{+ (cert.rangeLength)}\\
-        \qquad\qquad\qquad\qquad\qquad\texttt{);}\\
+        \qquad\qquad\texttt{bytes32 h = sha3(cert.winner, cert.rangeStart, cert.rangeLength)}\\
         \\
         \qquad\qquad\texttt{// Update h with~hashes $h_{d-1}, \ldots, h_0$}\\
         \qquad\qquad\texttt{for (uint i = cert.path.length; i > 0; i--) \{}\\
