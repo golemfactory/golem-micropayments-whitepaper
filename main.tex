@@ -67,6 +67,7 @@
 \end{abstract}
 
 \section{Introduction}
+\label{sec:intro}
 
     This work  is~part of~research conducted in~the~Golem project. The~aim of~Golem  is~to create a~global prosumer
     market for~computing power, in~which producers may sell spare CPU time of~their personal computers and~consumers
@@ -87,8 +88,8 @@
 
     In Golem we handle a~variety of~tasks with~different sizes and~decomposable to~a~different degree. In~particular:
     \begin{itemize}
-        \item Task partitioning can range from~10 to~10000 subtasks.
-        \item Task value can range from~\$1 to~\$10 000.
+        \item Task partitioning can range from~10 to~$10\;000$ subtasks.
+        \item Task value can range from~\$1 to~$\$10\;000$.\marginpar{Czemu nie $\$1$--$\$\infty$?}
         \item Payment for~a~single subtask may be as low as \$0.01 or even \$0.001 for~some types of~tasks.
     \end{itemize}
 
@@ -104,7 +105,7 @@
     the~node's income should approach the~sum of~subtask values that~this node has computed.
 
     Thus we are looking for~a~micropayments solution that~handles payments as small as \$0.01 with~transaction fees
-    in~the~order of~\$0.0001 per~payment (this does not necessarily mean \$0.0001 per~transaction which~may group many
+    in~the~order of~\$0.0001 per~payment (this does not necessarily mean \$0.0001 per~task which~may group many
     payments). This rules out traditional methods such as bank-based transactions, credit card transactions or PayPal,
     since~transaction fees they incur are in~the~order of~\$0.1, plus a~percentage of~the~transaction value
     (see e.g. \cite{FRS}).
@@ -795,7 +796,7 @@
     \item transferring ether to other account in a contract ($9\;000$ gas),
     \item writing new storage entry ($20\;000$ gas for each nonzero 256-bit word),
     \item modifying existing storage entry ($5\;000$ gas for each 256-bit word),
-    \item computing sha3 hash ($222$ gas for hashing a 256-bit word).
+    \item computing SHA-3 hash ($222$ gas for hashing a 256-bit word).
       \marginpar{Może być tak (new entry/existing entry)?}
     \end{itemize}
 
@@ -805,7 +806,7 @@
       \begin{tabular}{p{9em}p{4em}p{7em}p{6em}p{6em}p{6em}}
         \hline
         Method & Constant cost & Cost per user& Cost for~10 users & Cost for~100 users & Cost for~1000 users \\ \hline
-        Direct transfer     & 21 000  & 11 000 & 130 000 & 1.1 mln & 11.2 mln \\ %\hline
+        Batched transfers   & 21 000  & 11 000 & 130 000 & 1.1 mln & 11.2 mln \\ %\hline
         Subaccounts         & 21 000  &  8 000 & 100 000 & 840 000 &  8.2 mln \\ %\hline
         Lottery (check)     & 140 000 & $\log_2(n)/n \cdot 2700 $ & 150 000 & 155 000 & 165 000 \\ %\hline
         Lottery (optimistic)& 155 000 & 0 & 155 000 & 155 000 & 155 000 \\ \hline
@@ -867,7 +868,7 @@
       \begin{tabular}{lrrr} 
         \hline
         Method              & Cost for~10 users & Cost for~100 users & Cost for~1000 users \\ \hline
-        Direct transfer/subaccounts    & ~ \$0.01          & ~ \$0.1            & ~ \$1    \\ %\hline
+        Batched transfers/subaccounts  & ~ \$0.01          & ~ \$0.1            & ~ \$1    \\ %\hline
         Lottery (either variant)       & ~ \$0.01          & ~ \$0.01           & ~ \$0.01 \\ \hline
       \end{tabular}
       \caption{Transaction costs in USD for different payment methods, order-of-magnitude estimates.}
@@ -883,7 +884,10 @@
 
     A lottery must be used for tasks in which participants are to be paid less than $\$0.1$.
     It may also be used if there are at least 20 participants and the payer wants to
-    minimize transaction fees even at the cost of using a more complex payment method.
+    minimize transaction fees even at the cost of using a more complex and probabilistic payment method.
+    Note that the constant cost of the lottery approach is low enough to make it suitable for tasks with
+    total value of $\$1$, which is the minimum task value Golem will need to handle (see Section~\ref{sec:intro}).
+
 
 \section{Source of~randomness for~the~lottery implementation}
 \label{sec:randomness}
@@ -974,20 +978,36 @@
 
 \section{Conclusion}
 \label{sec:conclusion}    
-    In this paper we have presented several approaches to~one-to-many micropayment problem in~the~context of~the~Golem
-    project. We require solution that~is~decentralized, doesn't require any trusted authority and~doesn't assume that
-    a~payer makes a~series of~micropayments to~a~single recipient. We can however assume that~one recipeint will
-    recieve a~series of~micropayment  from~many payers.
+    In this paper we present several approaches to~one-to-many micropayments in~the~context of~the~Golem
+    project. We require solution that~is~decentralized, provides secure transactions without any trusted authorities
+    and, additionally, does not assume that a~payer makes a~series of~micropayments to~a~single recipient.
+    On the other hand, we do assume that~one recipeint receives a~series of~micropayments from~many payers.
+    The main problem is how to design the payment scheme to keep transaction fees in the order of 1\% or less.
 
-    We have discussed possible solutions based on~different technologies and~described why they are not appropriate to
-    our problem. We have proposed some solutions based on~Ethereum smart contracts and~analysed their cost.
-    Direct payment in~Ethereurm cost right now below~\$0.001 per~person. Methods like  subaccounts allows to~make
-    payments with~a~cost 2.5 times lower than direct transfer. But we have to~take into~account that~this prices will
-    probably increase in~the~future and~will not be sufficient for~multi payees scenario that~we are analysing.
-    Therefore we recommend a~probabilistic solution called lottery for~payments with~more than 10 recipients.
-    This method may have either constant cost, independent from~a~transaction value and~number of~users or logarithmic
-    cost (payee may choose solution depending on~which method is~more viable and~convenient to~him/her). Logarithmic
-    cost is~achieved thanks to~the~usage of~Merkle tree structure for~lottery description.
+    Cryptocurrencies provide decentralized and secure transaction platform, so we first consider basing our solution
+    on Bitcoin, by far the most widely used cryptocurrency. It turns out that transaction fees in Bitcoin
+    are too high to guarantee a safety margin against possible changes of Bitcoin price in fiat currencies, especially
+    if there are 100 or more transaction recipients. To make things worse, there are reasons to expect that
+    Bitcoin transaction fees will be higher in the future (see Section~\ref{sec:cryptocurrencies} for details).
+    
+    We then turn our attention to Ethereum. A straightforward approach---batching many direct transfers in a
+    single Ethereum transaction---is cheaper than in Bitcoin, but still within the same order of magnitude.
+    Transaction fees may be somewhat reduced if payments for a single recipient are accumulated on this
+    recipient's ``subaccount'' managed by an Ethereum contract. The cost of all these straigthforward methods
+    is proportional to the number of task participants, not to the task value. This means that there is penalty
+    for distributing tasks to larger number of participants: we estimate that if a payment for computing a single
+    subtask is lower than $\$0.1$ then transaction costs exceed 1\% of the task value (with the costs of gas and
+    Ether at the time of this writing).
+
+    A big advantage of Ethereum is that it allows us to use smart contracts to implementing more complex
+    payment schemes better suited to Golem setting and with lower transaction fees. 
+    In particular, we propose a~probabilistic payment scheme that uses lotteries to remunerate task participants.
+    The cost of our this solution is either constant, independent from~a~transaction value and the~number of~participants,
+    or proportional to the~logarithm of the~number of participants, depending on the variant of the payment protocol
+    chosen by the participant that wins the lottery. In practice, costs of both variants are very similar even
+    for thousands of participants. The constant term in the cost of the lottery is low, making the lottery cheaper
+    than the ``subaccounts'' method (our best $O(n)$ method) for tasks with at least 20 participants.
+
     Taking into~account that~Golem project should be universal solution for~people from~different timezones and
     abilities to~be online we were trying to~minimise requirements for~users to~be online at~a~specific point of~time.
     The~main requirement is~for~a payer to~be online at~some time between 2 minutes and~half an~hour after initializing
