@@ -13,7 +13,7 @@ cbinom(x, n, p)=(x<1)?binom(0, n, p):binom(x, n, p)+cbinom(x-1, n, p)
 unset key
 unset label
 set style data lines
-set title sprintf("Chances of receiving at least %d% of expected income (%d users in lottery)", R * 100, N)
+set title sprintf("Chances of receiving at least %d%% of expected income (%d users in lottery)", R * 100, N)
 set xlabel "number of lotteries"
 set ylabel "probability"
 set yrange [0.5:1.0]
