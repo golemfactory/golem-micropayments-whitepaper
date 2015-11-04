@@ -96,7 +96,6 @@
     The~main requirement for~any payment solution used in~Golem  is~that it should be decentralized and~not depend
     on~any trusted authorities (banks, brokers).
 
-
     We should not expect that~after a~payment for~a~subtask  is~made, another payment with~the~same payer and~recipient
     will occur in~a~short time. That is, it may not be possible to~accumulate payments made by~one payer and~transfer
     the~larger sum using a~single transaction. On the~other hand, we may consider methods that~assume recurring
@@ -109,6 +108,7 @@
     payments). This rules out traditional methods such as bank-based transactions, credit card transactions or PayPal,
     since~transaction fees they incur are in~the~order of~\$0.1, plus a~percentage of~the~transaction value
     (see e.g. \cite{FRS}).
+
     It seems more promising to~look at~available micropayment schemes based on~digital currencies such
     as Bitcoin \cite{BITCOIN}, which we do in Section~\ref{sec:cryptocurrencies}. In Section~\ref{sec:ethereum} we
     describe Ethereum, a platform for developing decentralized applications, and consider payment methods based
@@ -535,7 +535,7 @@
     \paragraph{LotteryData struct.}
     For every lottery that~is~in progress the~following Solidity structure is~stored in~the~Ethereum storage:
 
-    \begin{lstlisting}[gobble=4,xleftmargin=1cm]
+    \begin{lstlisting}
     struct LotteryData {
         uint value;
         uint maturity;
@@ -562,9 +562,9 @@
     redeemed by~equity token holders (all Golem application owners).
 
     The~syntax of~Solidity is~similar to~JavaScript. In particular, if~lotteries is~a~mapping of~uints to~structs of~type LotteryData then the~statement
-    \begin{center}
-      \lstinline!lotteries[lotteryHash].deadline = t!
-    \end{center}
+    \begin{quote}
+      \verb!lotteries[lotteryHash].deadline = t!
+    \end{quote}
     will update the~field \texttt{deadline} in~the~\texttt{LotteryData} struct for~a~lottery with~hash
     \texttt{lotteryHash}. One difference from~JavaScript is~that in~Solidity a~\texttt{mapping} is~a~total
     function, in~particular \texttt{lotteries} initially maps all possible key values to
@@ -590,24 +590,19 @@
           how $\lotteryhash{L}$ is computed).\\
             \textbf{Preconditions}: no \texttt{LotteryData} struct is~associated with~$\lotteryhash{L}$ in~the~contract's
             storage. This is~equivalent to~the~condition
-            \begin{center}
-	      \lstinline!lotteries[lotteryHash].value == 0!
-            \end{center}
+            \begin{quote}
+	      \verb!lotteries[lotteryHash].value == 0!
+            \end{quote}
             %
             \textbf{Effects}: The~message transfers the~lottery value $v$ and~the~payer deposit (additional 10\%
             of~$v$) to~the~contract and~stores the~\texttt{LotteryData} struct for~the~new lottery. The~field value
             is~set to~$10/11$ of~the~value transferred by~the~\texttt{message} and~and the~remaining $1/11$ of~this value
             is~treated. Field \texttt{maturity} is~initialized with~argument $m$ and~\texttt{payer} is~initialized with
             the~sender's address. The~remaining fields are initialized with~zeros.
-            \noindent\begin{lstlisting}
-        lotteries[lotteryHash] = LotteryData(value, block.number + maturity,
-                                                 0, 0, msg.sender, 0);
-            \end{lstlisting}
-
-%            \begin{center}
-%              \verb!lotteries[lotteryHash] = LotteryData(value, block.number + maturity,!\\
-%              \verb!                           0, 0, msg.sender, 0)!
-%            \end{center}
+            \begin{quote}
+              \verb!lotteries[lotteryHash] = LotteryData(value, block.number + maturity,!\\
+              \verb!                                     0, 0, msg.sender, 0)!
+            \end{quote}
             At this point any payee can calculate the~hash of~the~lottery on~its own and~can verify if~it exists in
             the~contract's storage. It can be done by~querying the~(locally available) Ethereum state.
         \item Anyone (not only a~payer) can send a~\texttt{lotteryCaptureHash} message with~argument $\lotteryhash{L}$ to~write
@@ -616,143 +611,141 @@
             \begin{enumerate}
                 \item The~value field of~the~\texttt{LotteryData} for~the~lottery has been set (meaning that~the
                 lottery has been initialized but not finalized yet).
-                    \begin{center}
-	              \verb!lotteries[lotteryHash].value \!= 0!
-                    \end{center}
+                \begin{quote}
+                  \verb|lotteries[lotteryHash].value != 0|
+                \end{quote}
                 \item The~lottery \texttt{randVal} has not been set yet.
-                    \begin{center}
-	                    \texttt{lotteries[lotteryHash].randVal == 0}
-	                \end{center}
+                  \begin{quote}
+	            \verb!lotteries[lotteryHash].randVal == 0!
+	          \end{quote}
                 \item The~maturity has elapsed (the stored maturity number is~less than current pending block number).
-                    \begin{center}
-                	    \texttt{lotteries[lotteryHash].maturity < block.number}
-                	\end{center}
+                  \begin{quote}
+                    \verb!lotteries[lotteryHash].maturity < block.number!
+                  \end{quote}
 	        \end{enumerate}
         \textbf{Effects}:
         \begin{enumerate}
             \item  If~the~difference of~the~current block number and~maturity is~not greater than 128 then the~hash of
                 the~deciding block is~written as the~\texttt{randVal} and~the~payer deposit is~transferred to~the~payer.
-                \begin{center}
-                    \begin{tabular}{l}
-                        \texttt{lottery.randVal = random(lottery.maturity);}\\
-                        \texttt{lottery.payer.send(countPayerDeposit(lottery.value));}
-                    \end{tabular}
-                \end{center}
+                \begin{quote}
+                  \verb!lottery.randVal = random(lottery.maturity);!\\
+                  \verb!lottery.payer.send(calculatePayerDeposit(lottery.value));!
+                \end{quote}
             \item If~the~difference of~the~current block number and~maturity is~greater than 128 but not greater than
                 256 then  the~hash of~the~deciding block is~written as the~\texttt{randVal} the~payer deposit
                 is~transferred to~the~message sender.
-                \begin{center}
-                    \begin{tabular}{l}
-                        \texttt{lottery.randVal = random(lottery.maturity);}\\
-                        \texttt{msg.sender.send(countPayerDeposit(lottery.value));}
-                    \end{tabular}
-                \end{center}
+                \begin{quote}
+                  \verb!lottery.randVal = random(lottery.maturity);!\\
+                  \verb!msg.sender.send(calculatePayerDeposit(lottery.value));!
+                \end{quote}
             \item If~the~difference of~the~current block and~maturity is~greater than 256 then the~hash of~the~block
             with~number maturity$+k \cdot 256$, where $k$ is~the~greatest possible integer, is~written to~the~contract
             as the~\texttt{randVal} and~the~payer deposit remains in~the~contract (a contract owner gets it).
-            \begin{center}
-                \begin{tabular}{l}
-                    \texttt{lottery.randVal = random(changeMaturity(lottery.maturity));}\\
-		            \texttt{golem\_dep += countPayerDeposit(lottery.value);}
-		        \end{tabular}
-		    \end{center}
+            \begin{quote}
+              \verb!lottery.randVal = random(changeMaturity(lottery.maturity));!\\
+	      \verb!golemDeposit += calculatePayerDeposit(lottery.value);!
+	    \end{quote}
         \end{enumerate}
+
         \item Anyone (not only a~payee) can send a~\texttt{lotteryWinner} message to~claim that~she is~the~winner.
             The~message contains the~lottery hash and~requires to~transfer a~winner deposit.\\
             \textbf{Preconditions}:
             \begin{enumerate}
-                \item The~maturity stored for~the~lottery has been set.
-                    \begin{center}
-                        \texttt{lotteries[lotteryHash].maturity != 0}
-                    \end{center}
-                \item The~maturity has elapsed.
-                    \begin{center}
-		                \texttt{lotteries[lotteryHash].maturity < block.number}
-		            \end{center}
-                \item Nobody has claimed to~be the~winner yet.
-                    \begin{center}
-                        \texttt{lotteries[lotteryHash].winner == 0}
-                    \end{center}
+            \item The~maturity stored for~the~lottery has been set.
+              \begin{quote}
+                \verb|lotteries[lotteryHash].maturity != 0|
+              \end{quote}
+            \item The~maturity has elapsed.
+              \begin{quote}
+		\verb|lotteries[lotteryHash].maturity < block.number|
+	      \end{quote}
+            \item Nobody has claimed to~be the~winner yet.
+              \begin{quote}
+                \verb|lotteries[lotteryHash].winner == 0|
+              \end{quote}
             \end{enumerate}
             \textbf{Effects}:
             \begin{enumerate}
-                \item The~contract sets the~claimed winner to~the~sender's address and~sets deadline.
-                    \begin{center}
-                        \begin{tabular}{l}
-                		    lottery.winner = msg.sender;
-                            lottery.deadline = now + deadline;
-                        \end{tabular}
-                    \end{center}
-                \item If~the~\texttt{randVal} is~not set than calls \texttt{lotteryCaptureHash} message.
-                    \begin{center}
-                        \texttt{lotteryCaptureHash(lotteryHash)}
-                    \end{center}
+            \item The~contract sets the~claimed winner to~the~sender's address and~sets deadline.
+              \begin{quote}
+                \verb|lottery.winner = msg.sender;|\\
+                \verb|lottery.deadline = now + deadline;|
+              \end{quote}
+            \item If~the~\texttt{randVal} is~not set than calls \texttt{lotteryCaptureHash} message.
+              \begin{quote}
+                \verb|lotteryCaptureHash(lotteryHash)|
+              \end{quote}
             \end{enumerate}
+            
         \item Anyone (not only a~payee or the~payer) can send a~\texttt{lotteryCheck} message. The~message contains
             the~lottery hash and~the~data required to~compute the~winner (see Section \ref{sec:lottery-verification}
             for~details).\\
             \textbf{Preconditions:}
             \begin{enumerate}
-                \item The~maturity stored for~the~lottery has been set
-                    \texttt{lotteries[lotteryHash].maturity != 0}
-                \item The~maturity has elapsed.
-	                \texttt{lotteries[lotteryHash].maturity < block.number}
-	        \end{enumerate}
-	        \textbf{Effects:}
-	        \begin{enumerate}
-                \item If~the~\texttt{randVal} is~not set than call \texttt{lotteryCaptureHash} message.
-                    \begin{center}
-                        \texttt{lotteryCaptureHash(lotteryHash)}
-                    \end{center}
-                \item If~28800 blocks has been added to~the~blockchain after the~deciding block (this would take
-                    approx. 5 days) then 10\% of~the~transaction value $v$ is~transferred to~the~sender (which is~treated
-                    as a~lottery agent) and~the~transaction value is~reduced to~90\% of~its previous value.
-                    \begin{center}
-                        \texttt{msg.sender.send(countAgentProvision(lottery.value));}
-                    \end{center}
-                \item If~the~winner field is~set to~0 in~the~lottery data than the~transaction value is~sent to~the
-                    winner.
-                    \begin{center}
-                        \texttt{winner.send(lottery.value);}
-                    \end{center}
-                \item If~the~winner field is~equal to~the~winner address then the~transaction value and~the~winner
-                    deposit are transferred to~the~winner.
-                    \begin{center}
-			            \texttt{winner.send(lottery.value + calculateWinnerDeposit(lottery.value));}
-			        \end{center}
-			    \item If~the~winner field is~not equal to~the~winner address then the~transaction value is
-			        transferred to~the~winner, winner deposit is~transferred to~the~sender.
-			        \begin{center}
-			            \texttt{msg.sender.send(calculateWinnerDespoit(lottery.value));}
-			        \end{center}
-                \item The~lottery is~erased from~the~contract.
-                    \begin{center}
-                        \texttt{delete lotteries[lotteryHash]}
-                    \end{center}
+            \item The~maturity stored for~the~lottery has been set
+              \begin{quote}
+                \verb|lotteries[lotteryHash].maturity != 0|
+              \end{quote}
+            \item The~maturity has elapsed.
+	      \begin{quote}
+                \verb|lotteries[lotteryHash].maturity < block.number|
+              \end{quote}
+	    \end{enumerate}
+	    \textbf{Effects:}
+	    \begin{enumerate}
+            \item If~the~\texttt{randVal} is~not set than call \texttt{lotteryCaptureHash} message.
+              \begin{quote}
+                \verb|lotteryCaptureHash(lotteryHash)|
+              \end{quote}
+            \item If~28800 blocks has been added to~the~blockchain after the~deciding block (this would take
+              approx. 5 days) then 10\% of~the~transaction value $v$ is~transferred to~the~sender (which is~treated
+              as a~lottery agent) and~the~transaction value is~reduced to~90\% of~its previous value.
+              \begin{quote}
+                \verb|msg.sender.send(countAgentProvision(lottery.value));|
+              \end{quote}
+            \item If~the~winner field is~set to~0 in~the~lottery data than the~transaction value is~sent to~the
+              winner.
+              \begin{quote}
+                \verb|winner.send(lottery.value);|
+              \end{quote}
+            \item If~the~winner field is~equal to~the~winner address then the~transaction value and~the~winner
+              deposit are transferred to~the~winner.
+              \begin{quote}
+		\verb|winner.send(lottery.value + calculateWinnerDeposit(lottery.value));|
+	      \end{quote}
+	    \item If~the~winner field is~not equal to~the~winner address then the~transaction value is
+	      transferred to~the~winner, winner deposit is~transferred to~the~sender.
+	      \begin{quote}
+		\verb|msg.sender.send(calculateWinnerDespoit(lottery.value));|
+              \end{quote}
+            \item The~lottery is~erased from~the~contract.
+              \begin{quote}
+                \verb|delete lotteries[lotteryHash]|
+              \end{quote}
             \end{enumerate}
-        \item Anyone can send a~\texttt{lotteryPayout} message to~the~contract. The~message contains the~lottery hash.\\
+          \item Anyone can send a~\texttt{lotteryPayout} message to~the~contract. The~message contains the~lottery hash.\\
             \textbf{Preconditions:}
             \begin{enumerate}
-                \item The~deadline has elapsed.
-                    \begin{center}
-		                \texttt{lotteries[lotteryHash].deadline < now}
-		            \end{center}
-                \item Somebody has claimed to~be a~winner (winner isn't set to~zero).
-                    \begin{center}
-                        \texttt{lotteries[lotteryHash].winner != 0}
-                    \end{center}
+            \item The~deadline has elapsed.
+              \begin{quote}
+		\verb|lotteries[lotteryHash].deadline < now|
+              \end{quote}
+            \item Somebody has claimed to~be a~winner (winner isn't set to~zero).
+              \begin{quote}
+                \verb|lotteries[lotteryHash].winner != 0|
+              \end{quote}
             \end{enumerate}
             \textbf{Effects:}
             \begin{enumerate}
-                \item The~transaction value and~the~deposit are transferred to~the~claimed winner.
-                    \begin{center}
-			            \texttt{lottery.winner.send(lottery.value + calculateWinnerDeposit(lottery.value))}
-			        \end{center}
-                \item Transaction is~completed and~the~lottery data is~erased from~the~contract.
-                    \begin{center}
-                        \texttt{delete lotteries[lotteryHash]}
-                    \end{center}
-           \end{enumerate}
+            \item The~transaction value and~the~deposit are transferred to~the~claimed winner.
+              \begin{quote}
+		\verb|lottery.winner.send(lottery.value + calculateWinnerDeposit(lottery.value))|
+	      \end{quote}
+            \item Transaction is~completed and~the~lottery data is~erased from~the~contract.
+              \begin{quote}
+                \verb|delete lotteries[lotteryHash]|
+              \end{quote}
+            \end{enumerate}
     \end{enumerate}
 
     \paragraph{Storage size optimization.}
