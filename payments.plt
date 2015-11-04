@@ -19,9 +19,9 @@ set xlabel "number of users"
 set ylabel "gas used"
 set yrange [0.0:600000.0]
 set format y "%.0s%c"
-plot [0:40] batch(x) lt -1 pi -6 pt 7 title "batch", \
-            subaccount(x) lt -1 pi -4 pt 6 title "subaccount", \
-            check(x) lt -1 title "lottery check", \
-            winner(x) lt -1  pi -5 pt 5  title "lottery winner"
+plot [0:40] batch(x) lt -1 pi -6 pt 7 title "batched transfers", \
+            subaccount(x) lt -1 pi -4 pt 6 title "subaccounts", \
+            check(x) lt -1 title "lottery (check)", \
+            winner(x) lt -1  pi -5 pt 5  title "lottery (optimistic)"
 
 
