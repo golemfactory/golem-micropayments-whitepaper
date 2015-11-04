@@ -850,6 +850,11 @@
     lower transaction fees but the winner has to wait approximately 24 hours after
     sending the \verb!lotteryWinner! message to collect the reward. 
 
+    Note also that for a task with $1\;000$ participants it is less
+    expensive to run 10 lotteries (one for each 100 participants and
+    with $1 / 100$ chance of winning $1 / 10$ of the total task value)
+    than to pay using batched transfers or subaccounts.
+    
     \subsection{Costs in fiat currency}
     We may also give corresponding costs in USD, using the
     gas/\ETH{} and \ETH{}/USD rates at the~time of this~writing.%
@@ -860,7 +865,7 @@
     the future, taking into account the history of Bitcoin price),
     transaction costs in any fiat currency should be taken as very
     rough estimates, so we round the values up to the nearest power of ten.
-    In this approximation Table~\ref{table:costs} collapses to just two rows,
+    In this~approximation Table~\ref{table:costs} collapses to just two rows,
     as shown in Table~\ref{table:costs-usd}.
        
     \begin{table}
@@ -888,6 +893,13 @@
     Note that the constant cost of the lottery approach is low enough to make it suitable for tasks with
     total value of $\$1$, which is the minimum task value Golem will need to handle (see Section~\ref{sec:intro}).
 
+    When comparing costs of various methods we should take into account another factor besides gas requirements.
+    Namely, if given a choice users will probably prefer to participate in tasks for which payment is made with
+    deterministic methods and the outcome is more predictable. For similar reasons, lotteries with less paricipants
+    will be preferred, as they are more likely to provide a reward.
+    If the compute nodes are in short supply, lottery rewards will have to be higher than task value paid with
+    batched transfers or subaccounts method, to encourage nodes to participate. This may drastically limit the
+    applicability of the lottery method.
 
 \section{Source of~randomness for~the~lottery implementation}
 \label{sec:randomness}
@@ -1002,21 +1014,33 @@
     A big advantage of Ethereum is that it allows us to use smart contracts to implementing more complex
     payment schemes better suited to Golem setting and with lower transaction fees. 
     In particular, we propose a~probabilistic payment scheme that uses lotteries to remunerate task participants.
-    The cost of our this solution is either constant, independent from~a~transaction value and the~number of~participants,
+    The cost of our solution is either constant, independent from~a~transaction value and the~number of~participants,
     or proportional to the~logarithm of the~number of participants, depending on the variant of the payment protocol
     chosen by the participant that wins the lottery. In practice, costs of both variants are very similar even
     for thousands of participants. The constant term in the cost of the lottery is low, making the lottery cheaper
     than the ``subaccounts'' method (our best $O(n)$ method) for tasks with at least 20 participants.
 
-    Taking into~account that~Golem project should be universal solution for~people from~different timezones and
-    abilities to~be online we were trying to~minimise requirements for~users to~be online at~a~specific point of~time.
-    The~main requirement is~for~a payer to~be online at~some time between 2 minutes and~half an~hour after initializing
-    the~lottery to~capture a~random value. Lottery however will still be valid and~finalized if~it's not possible.
-    We also have included a~lottery agent mechanism that~allows users to~receive most of~their reward without having
-    any starting funds for~messages.
+    In practice, even if the lottery is superior to all $O(n)$ methods in terms of the gas use, Golem users
+    may prefer to use a method with higher fees but with a predictable outcome. If compute nodes always have
+    the option to choose a task with deterministic payment, this may effectively make lotteries nonviable.
 
-    We think that~proposed solution can be used not only in~Golem project but also in~other one-to-many nanopayments
-    scenarios in~the~future
+    It may be also interesting to consider a generalization of the lottery payment protocol that handles
+    lotteries with an arbitrary (but fixed) number of winners. For example, a payment for a task with 1000
+    participants could be made with a lottery that has 10 winners, giving each participant $1 / 100$ chance
+    of winning instead of $1 / 1000$. Such a generalized lottery would be less expensive than running 10
+    separate lotteries for each 100 participants, but would probably require a more complex protocol. This~could
+    be a~subject of future work.
+    
+    %% Taking into~account that~Golem project should be universal solution for~people from~different timezones and
+    %% abilities to~be online we were trying to~minimise requirements for~users to~be online at~a~specific point of~time.
+    %% In the lottery approach, a payer has to~be online at~some time between 2 minutes and~half an~hour after initializing
+    %% the~lottery to~capture a~random value. If it is not possible, the payer's deposit will be lost but the lottery
+    %% will still be valid and can be successfully finalized.
+    %% We have also included a~lottery agent mechanism that~allows users to~receive most of~their reward without having
+    %% any starting funds for~sending messages.
+
+    We think that~the proposed lottery mechanism can be used not only in~the Golem project but also in~other
+    one-to-many nanopayments scenarios in~the~future.
 
 \begin{thebibliography}{9}
 \bibitem{ALARM} Ethereum Alarm Clock contract website, \url{http://www.ethereum-alarm-clock.com/}.
@@ -1506,7 +1530,7 @@
 
     \begin{figure}
         \centering
-        \includegraphics[scale=0.6]{prob.pdf}
+        \includegraphics[scale=0.6]{prob10.pdf}
         \caption{Plot illustrates what is~a~probability of~receiving at~least 80\% of~expected income after $k$
         lotteries when 10 participants take part in~every lottery}
         \label{fig:prob}
