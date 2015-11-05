@@ -13,7 +13,7 @@
 
 \usepackage{listings}
 \lstset{basicstyle=\ttfamily, columns=fullflexible,%
-  emph={address,bool,bytes32,struct,uint,uint32,uint256},%
+  emph={address,bool,bytes32,contract,external,function,return,returns,struct,uint,uint8,uint32,uint256},%
   emphstyle={\bfseries}}
 
 % For TikZ diagrams:
@@ -159,7 +159,8 @@
     the~payer issues a~"lottery ticket" for~a~lottery with~\$1 prize with~a~$1/100$ chance of~winning. The~expected
     value of~such ticket is~\$0.01. The~advantage is~that on~average only one ticket in~100 will~lead to~an actual
     transaction. Such scheme is~proposed e.g. in~\cite{RIVEST} and~\cite{WHEELER}.
-    A~possible implementation of~this scheme may use cryptographic hash functions, for~example SHA-3. First, both
+    A~possible implementation of~this scheme may use a~cryptographic hash function~\cite{CRYPTOHANDBOOK},
+    for~example SHA-3~\cite{SHA3}. First, both
     the~payer and~the~recipient draw (or choose) their numbers $n_P$ and~$n_R$, respectively.
     Both parties initially keep their numbers secret. Then the~recipient reveals $\hash{n_R}$, the hash of $n_R$.
     In the~next step the~payer reveals $\hash{n_P}$. Finally, both parties reveal their numbers (in any order)
@@ -214,7 +215,7 @@
     of~execution has to~start with~a~transaction sent by~an~external actor (a~user). A~contract has no way of~calling
     any external service outside Ethereum.
 
-    Contracts are executed by~the~Ethereum Virtual Machine (EVM)\cite{ETHERDEV}. Each EVM instruction consumes certain
+    Contracts are executed by~the~Ethereum Virtual Machine (EVM)~\cite{WOOD}. Each EVM instruction consumes certain
     amount of~gas which~reflects a~computational cost of~processing the~instruction by~Ethereum nodes. Gas has to~be
     purchased with~Ether by~the~user who~wishes to~run a~contract. Paying for~gas is~the~analogue of~transaction fees
     in~Bitcoin. Gas price is~market-based: each transaction specifies the~maximum price its sender is~willing to~pay
@@ -475,7 +476,7 @@
 \section{Lottery Protocol Specification}
 \label{sec:lottery-protocol}
     The~lottery contract is~implemented in~Solidity \cite{SOLIDITY}, a~high-level language compiled to~machine code of
-    the~Ethereum Virtual Machine\cite{ETHERDEV}. A~contract in~Solidity consists of~a~number of~functions, each
+    the~Ethereum Virtual Machine~\cite{WOOD}. A~contract in~Solidity consists of~a~number of~functions, each
     function is~a~entry point to~the~contract code. A message sent to the contract identifies a function to be called
     and specifies values of the function's arguments. Below we list Solidity functions that correspond to messages
     in the~lottery protocol. The~following data types of~arguments are used:
@@ -701,7 +702,7 @@
               approx. 5 days) then 10\% of~the~transaction value $v$ is~transferred to~the~sender (which is~treated
               as a~lottery agent) and~the~transaction value is~reduced to~90\% of~its previous value.
               \begin{quote}
-                \verb|msg.sender.send(countAgentProvision(lottery.value));|
+                \verb|msg.sender.send(calculateAgentProvision(lottery.value));|
               \end{quote}
             \item If~the~winner field is~set to~0 in~the~lottery data than the~transaction value is~sent to~the
               winner.
@@ -944,38 +945,37 @@
     and~so on.
 
     \subsection{A contract for storing hashes of past blocks}
+    \label{sec:hundred}
     We also consider implementing our own custom contract for~storing hashes of~past blocks.
     The~idea is~to consider only hashes of~blocks with~numbers divisible by~100 (for instance) and~remember last 100
-    (for instance) such hashes. This means that~a~new random value can be generated roughly each 25 min
-    (time to~generate 100 blocks) and~the~contract may reproduce values from~the~past 100 days
+    (for instance) such hashes. This means that~a~fresh block hash will be available roughly each 25 min
+    (time to~generate 100 blocks) and~the~contract may reproduce hashes from~the~past 100 days
     (time to~generate 10 000 blocks). The~contract stores an~array of~100 hashes and~has two functions:
     \texttt{feed()} for~writing the~hash of~the~most recent block with~number divisible by~100, and
-    \texttt{get(blocknum)} which~returns the~hash for~the~latest block with~number divisible by~100 less or
-    equal to~\texttt{blocknum}.
+    \texttt{get(blocknum)} which~returns the~hash for~the~latest block with the~number divisible by~100 and less
+    or equal to~\texttt{blocknum}.
+    %
+    \begin{lstlisting}
+    contract OneHundredHashes {
+        
+        bytes32[100] hashes;
 
-    \label{sec:hundred}
+        function feed() external {
+            uint8 index = uint8((block.number / 100) % 100);
+            hashes[index] = block.blockhash(block.number - block.number % 100);
+        }
 
-    \begin{tabular}{l}
-        \texttt{contract OneHundredHashes \{}\\
-        \\
-	    \qquad \texttt{bytes32[100] hashes;}\\
-        \\
-	    \qquad\texttt{function feed() external \{}\\
-    	\qquad\qquad \texttt{uint8 index = uint8((block.number / 100) \% 100);}\\
-    	\qquad\qquad \texttt{hashes[index] = block.blockhash(block.number - block.number \% 100);}\\
-	    \qquad\texttt{\}}\\
-        \\
-	    \qquad \texttt{function get(uint blocknum) external returns (bytes32) \{}\\
-        \qquad\qquad \texttt{uint8 index = uint8((blocknum / 100) \% 100);}\\
-    	\qquad\qquad \texttt{return hashes[index];}\\
-	    \qquad\texttt{\}}\\
-    \texttt{\}}
-    \end{tabular}
-
-    The~cost of~a~call to~feed is~26 000 gas (21 000 for~a transaction + 5 000 for~updating storage) and~feed should
-    be called at~least every 100 blocks, that~is, roughly 20 000 times a~year. With the~current price of~gas
-    and~Ether, the~cost of~running the~contract is~approx \$20 per~year. The~cost of~contract initialization and
-    storing first 100 hashes is~negligible (well below~\$1). The~cost of~calling get is~slightly above~21 000 gas
+        function get(uint blocknum) external returns (bytes32) {
+            uint8 index = uint8((blocknum / 100) % 100);
+            return hashes[index];
+        }
+    }    
+    \end{lstlisting}
+    %
+    The~cost of~a~call to~\verb!feed! is~$26\;000$ gas ($21\;000$ for~a transaction and $5\;000$ for~updating storage)
+    and~\verb!feed! should be called at~least every 100 blocks, that~is, roughly $20\;000$ times a~year. With the~current
+    price of~gas and~Ether, the~cost of~running the~contract is~approx \$20 per~year. The~cost of~contract initialization and
+    storing first 100 hashes is~negligible (well below~\$1). The~cost of~calling \verb!get! is~slightly above~$21\;000$ gas
     (reading from~storage is~cheap compared to~writing).
 
     For the contract to function properly, \texttt{feed} needs to be called once in~every 25 min, by users or
@@ -1036,46 +1036,51 @@
     one-to-many nanopayments scenarios in~the~future.
 
 \begin{thebibliography}{9}
-\bibitem{ALARM} Ethereum Alarm Clock contract website, \url{http://www.ethereum-alarm-clock.com/}.
-\bibitem{ANDRESEN} Andresen, Gavin. \textit{"Back-of-the-envelope calculations for~marginal cost of~transactions"},
-    \url{https://gist.github.com/gavinandresen/5044482}.
-\bibitem{BITCOIN} Nakamoto, Satoshi. \textit{"Bitcoin A~Peer-to-Peer Electronic Cash System"}, 2008,
-    \url{https://bitcoin.org/bitcoin.pdf}.
-\bibitem{BITCOINJ} \textit{"Working with~micropayment channels"},
-    \url{https://bitcoinj.github.io/working-with-micropayments}.
-\bibitem{BITFEE} \textit{"Bitcoin Transaction Fees Explained"} web page, last update 2014, \url{http://bitcoinfees.com/}.
-\bibitem{BUTERIN} Buterin, Vitalik. "Scalability, Part 1: Building on~Top", Ethereum Blog, September 17, 2014,
-    \url{https://blog.ethereum.org/2014/09/17/scalability-part-1-building-top/}.
-\bibitem{CHANGETIP} ChangeTip website, \url{https://www.changetip.com/}.
-\bibitem{COINTIP} \textit{"Shutting Down Coinbase Tip Button"}, 2015,
-    \url{https://blog.coinbase.com/2015/02/10/shutting-down-the-coinbase-tip-button/}.
-\bibitem{ETHERDEV} \textit{Ethereum Development Tutorial}, last update May 24, 2015,
-    \url{https://github.com/ethereum/wiki/wiki/Ethereum-Development-Tutorial}.
-\bibitem{ETHEREUM} \textit{"Ethereum White Paper"}, \url{https://github.com/ethereum/wiki/wiki/White-Paper}.
+\bibitem{ALARM} Merriam, Piper. ``Ethereum Alarm Clock'',
+  \url{http://www.ethereum-alarm-clock.com/}.
+\bibitem{ANDRESEN} Andresen, Gavin. ``Back-of-the-envelope calculations for~marginal cost of~transactions'',
+  \url{https://gist.github.com/gavinandresen/5044482}.
+\bibitem{BITCOIN} Nakamoto, Satoshi. ``Bitcoin: A~Peer-to-Peer Electronic Cash System'', 2008,
+  \url{https://bitcoin.org/bitcoin.pdf}.
+\bibitem{BITCOINJ} ``Working with~micropayment channels'', \textit{Bitcoinj website}, 
+  \url{https://bitcoinj.github.io/working-with-micropayments}.
+\bibitem{BITFEE} ``Bitcoin Transaction Fees Explained'', February 2014,
+  \url{http://bitcoinfees.com/}.
+\bibitem{BUTERIN} Buterin, Vitalik. ``Scalability, Part 1: Building on~Top'', \textit{Ethereum Blog}, September 17, 2014,
+  \url{https://blog.ethereum.org/2014/09/17/scalability-part-1-building-top/}.
+\bibitem{CHANGETIP} \textit{ChangeTip website}, \url{https://www.changetip.com/}.
+\bibitem{COINTIP} ``Shutting Down Coinbase Tip Button'', \textit{The Coinbase Blog}, February 10, 2015,
+  \url{https://blog.coinbase.com/2015/02/10/shutting-down-the-coinbase-tip-button/}.
+\bibitem{CRYPTOHANDBOOK} Menezes, Alfred~J., et al. \textit{Handbook of Applied Cryptography}, 1997.
+\bibitem{ETHEREUM} Buterin, Vitalik, et al. ``Ethereum White Paper'', updated September 30, 2015,
+  \url{https://github.com/ethereum/wiki/wiki/White-Paper}.
 \bibitem{FRS} Board of~Governors of~the~Federal Reserve System, Press Release, June 29, 2011,
-    \url{http://www.federalreserve.gov/newsevents/press/bcreg/20110629a.htm}.
-\bibitem{JAIN} Jain, Mohit, Siddhartha Lal and~Anish Mathuria. \textit{"A~Survey of~Peer-to-peer Micropayment Schemes},
-    2008, \url{http://www.dgp.toronto.edu/~mjain/P2P_Micropayment-2008.pdf}.
-\bibitem{KASKALOGLU}Kaşkaloğlu, Kerem, \textit{"Near Zero Bitcoin Transaction Fees Cannot Last Forever"},
-    The~International Conference on~Digital Security and~Forensic(DigitalSec2014), 91-99, June, 2014,
-    \url{http://sdiwc.net/digital-library/near-zero-bitcoin-transaction-fees-cannot-last-forever.html}.
-\bibitem{RANDAO} McKinnon, Dennis. RANDAO repository,
-    \url{https://github.com/dennismckinnon/Ethereum-Contracts/tree/master/RANDAO}.
-\bibitem{RANDAO2} Qian, Yaucai. RANDAO repository, \url{http://github.com/randao}.
-\bibitem{RIVEST} Rivest, Ronald. \textit{"Electronic Lottery Tickets as Micropayments"},
-    "In Financial Cryptography", 307--314, Springer Verlag, 1997,
+  \url{http://www.federalreserve.gov/newsevents/press/bcreg/20110629a.htm}.
+\bibitem{JAIN} Jain, Mohit, Siddhartha Lal and~Anish Mathuria. \textit{Peer-to-Peer (P2P) Micropayments: A Survey and Critical Analysis}, technical report, DA-IICT, Gandhingar, India, 2008,
+  \url{http://www.dgp.toronto.edu/~mjain/P2P_Micropayment-2008.pdf}.
+\bibitem{KASKALOGLU} Kaşkaloğlu, Kerem. ``Near Zero Bitcoin Transaction Fees Cannot Last Forever'',
+  in \textit{The~International Conference on~Digital Security and~Forensic (DigitalSec2014)}, 91--99, June, 2014,
+  \url{http://sdiwc.net/digital-library/near-zero-bitcoin-transaction-fees-cannot-last-forever.html}.
+\bibitem{RANDAO} McKinnon, Dennis. ``RANDAO repository'',
+  \url{https://github.com/dennismckinnon/Ethereum-Contracts/tree/master/RANDAO}.
+\bibitem{RANDAO2} Qian, Yaucai. ``RANDAO repository'',
+  \url{http://github.com/randao}.
+\bibitem{RIVEST} Rivest, Ronald. ``Electronic Lottery Tickets as Micropayments'',
+    in \textit{Financial Cryptography}, 307--314, Springer Verlag, 1997,
     \url{https://people.csail.mit.edu/rivest/pubs/Riv97b.pdf}.
-\bibitem{SOLIDITY} \textit{Solidity Documentation}, \url{https://ethereum.github.io/solidity/docs/home/}.
+  \bibitem{SOLIDITY} Reitwiessner, Christian, et al. ``Solidity: Trustless, decentralised, smart contracts for Ethereum'',
+    web page, \url{https://ethereum.github.io/solidity/}.
 \bibitem{SHA3} FEDERAL INFORMATION PROCESSING STANDARDS PUBLICATION,
-    \textit{"SHA-3 Standard: Permutation-Based Hash and~Extendable Output Functions"}, FIPS PUB 202,
-    \url{http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf}.
-\bibitem{VISHNUMURTHY} Vishnumurthy, Viviek, Sangeeth Chandrakumar and~Emin G\:{u}n Sirer, \textit{"KARMA: A~Secure
-    Economic Framework for~Peer-to-Peer Resource Sharing"}, 2003,
-   \url{http://cs.brown.edu/courses/csci2950-g/papers/karma.pdf}.
-\bibitem{WHEELER} Wheeler, David. \textit{"Transactions Using Bets"},
-    "In proceedings Fourth Cambridge Workshop on~Security Protocols", 82--92, Springer, 1996.
-\bibitem{WOOD} Wood, Gavin. "Ethereum: A~Secure Decentralized Generalised Transaction Ledger", 2014,
-    \url{http://gavwood.com/paper.pdf}.
+  \textit{SHA-3 Standard: Permutation-Based Hash and~Extendable Output Functions}, FIPS PUB 202,
+  \url{http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf}.
+\bibitem{VISHNUMURTHY} Vishnumurthy, Viviek, Sangeeth Chandrakumar and~Emin G\"{u}n Sirer.
+  ``KARMA: A~Secure Economic Framework for~Peer-to-Peer Resource Sharing'', in
+  \textit{Proc. of the Workshop on Economics of Peer-to-Peer Systems}, June 2003,
+  \url{http://cs.brown.edu/courses/csci2950-g/papers/karma.pdf}.
+\bibitem{WHEELER} Wheeler, David. ``Transactions Using Bets'', in
+  \textit{Proc. of the Fourth Cambridge Workshop on~Security Protocols}, 82--92, Springer, 1996.
+\bibitem{WOOD} Wood, Gavin. ``Ethereum: A~Secure Decentralized Generalised Transaction Ledger'', 2014,
+  \url{http://gavwood.com/paper.pdf}.
 \end{thebibliography}
 \appendix
 \section{Dictionary}
@@ -1108,9 +1113,10 @@
 \label{sec:lottery-description}
     Here we show how to~store lottery data in~a~Merkle tree, so that~the~contract can verify that~a~specified payee
     is~indeed the~winner in~the~number of~steps proportional to~the~logarithm of~the~number of~payees.
-    We assume a~fixed cryptographic hash function [ref] that~will be used for~the~payment protocol.
-    For a~binary string $B$, $hash(B)$ will denote the~result of~the~hash function applied to~$B$.
-    For a~sequence $B_1, ..., B_n$ of~binary strings, $hash(B_1, ..., B_n)$ will denote the~the~result of
+    We assume a~fixed cryptographic hash function \cite{CRYPTOHANDBOOK} (for example SHA-3 \cite{SHA3})
+    that~will be used for~the~payment protocol.
+    For a~binary string $B$, $\hash{B}$ will denote the~result of~the~hash function applied to~$B$.
+    For a~sequence $B_1, ..., B_n$ of~binary strings, $\hash{B_1, ..., B_n}$ will denote the~the~result of
     the~hash function applied to~the~concatenation of~$B_1, ..., B_n$. In the~concrete Ethereum implementation SHA-3
     with~256-bit output will be used.
 
@@ -1142,7 +1148,7 @@
         R_i \leq x < R_i+r_i.
     \end{displaymath}
 
-    \begin{exmp}[with~S=3, N=5]
+    \begin{exmp}[with~$S=3$, $N=4$]
         Let $r_1 = 2$, $r_2 = 3$, $r_3 = 1$ and~$r_4 = 2$. Then we have $R_1 = 0$, $R_2 = 2$, $R_3 = 5$ and~$R_4 = 6$.\\
         Now,
         \begin{displaymath}
@@ -1199,7 +1205,7 @@
     Finally, a~Merkle tree is~a~\textbf{labeled full binary tree} $(T, l)$ with~the~la belling function
     $l:\; T \rightarrow \{0,1\}^{256}$ satisfying:
     \begin{displaymath}
-        l(n) = hash(l(n0), l(n1))
+        l(n) = \hash{l(n0), l(n1)}
     \end{displaymath}
     for~every $n \in \{0,1\}^*$ such that~$n0 \in T$.
 
@@ -1215,8 +1221,8 @@
     the~label of~the~root, $h_d = w$ and~in~general, $h_i = l(b_1,\,\ldots,\,b_i)$. From the~property of~Merkle trees
     we have, for~every $i \in \{1,\,\ldots,\,d\}$:
     \begin{itemize}
-        \item if~$b_i = 0$ then $h_{i-1} = hash(h_i, w_i)$
-        \item if~$b_i = 1$ then $h_{i-1} = hash(w_i, h_i)$
+        \item if~$b_i = 0$ then $h_{i-1} = \hash{h_i, w_i}$
+        \item if~$b_i = 1$ then $h_{i-1} = \hash{w_i, h_i}$
     \end{itemize}
     This means that~given $n,\, w$ and~$w_1,\,\ldots,\,w_d$ we may compute the~values of~$h_i$, starting from~$h_d = w$
     and~climbing the~tree up to~$h_0$ which~is~the~label of~the~root. Since hash is~assumed to~be collision resistant
@@ -1237,7 +1243,7 @@
 
 
     Now, going back the~lottery setting, a~Merkle tree for~a~lottery description L is~a~Merkle tree with~minimal height
-    such that~for~every $(a_i, R_i, r_i)$ in~$P(L)$ there exists a~leaf labeled with~$hash(a_i, R_i, r_i)$.
+    such that~for~every $(a_i, R_i, r_i)$ in~$P(L)$ there exists a~leaf labeled with~$\hash{a_i, R_i, r_i}$.
     This definition allows many different Merkle trees for~a given $L$, so we assume that~all lottery participants
     agree on~a~common algorithm that~builds a~"canonical" tree $M(L)$ for~each $L$, so that~every payee may construct
     $M(L)$ after receiving $L$. Alternatively, the~sender may send a~tree for~$L$ together with~$L$ to~each payee.
@@ -1273,12 +1279,11 @@
     A Solidity implementation of the algorithm that checks the validity of a winner certificate is
     coded in Appendix~\ref{sec:code} as the function \verb!checkCertificate! with the following signature:
     \begin{quote}
-      \verb|function checkCertificate(uint32 rand, bytes32 lotteryHash, bytes32 descriptionHash,|\\
-      \verb|                          WinnerCertificate cert) returns (bool)|
+      \verb|function checkCertificate(uint32 rand, bytes32 lotteryHash, WinnerCertificate cert)|\\
+      \verb|returns (bool)|
     \end{quote}
     The argument \verb|rand| is~the~random value ($x$ in~the~description above, with precision $S = 32$),
-    \verb|lotteryHash| is~$\lotteryhash{L}$, \verb|descriptionHash| is~$\hash{B(L)}$ and \verb|cert| is
-    a struct encoding a winner certificate.
+    \verb|lotteryHash| is~$\lotteryhash{L}$ and \verb|cert| is a struct encoding a winner certificate.
 
 \section{Contract code}
 \label{sec:code}
@@ -1287,8 +1292,9 @@
     fields in~\texttt{LotteryData} struct for~more clarity.
 
     \begin{tabularx}{\linewidth}{l}
-        \texttt{contract LotteryAgent \{}\\
-        \qquad\texttt{uint golem\_dep;  // golem account for~provisions}\\
+        \texttt{contract Lottery \{}\\
+        \\
+        \qquad\texttt{uint golemDeposit;  // golem account for~commissions}\\
         \\
         \qquad\texttt{uint constant maturity = 10; // blocks}\\
         \qquad\texttt{uint constant agentMaturity = 28800; // blocks}\\
@@ -1318,7 +1324,7 @@
         \qquad\qquad\texttt{LotteryData lottery = lotteries[lotteryHash];}\\
         \qquad\qquad\texttt{if (lottery.value != 0)}\\
         \qquad\qquad\qquad\texttt{return;}\\
-        \qquad\qquad\texttt{uint payerDeposit = countInitPayerDeposit(msg.value);}\\
+        \qquad\qquad\texttt{uint payerDeposit = calculateInitialPayerDeposit(msg.value);}\\
         \qquad\qquad\texttt{uint value = msg.value - payerDeposit;}\\
         \qquad\qquad\texttt{lotteries[lotteryHash] = LotteryData(value, block.number + maturity, 0, 0,}\\
         \qquad\qquad\qquad\qquad\qquad\qquad\qquad\qquad\qquad\qquad\qquad\qquad\texttt{msg.sender, 0);}\\
@@ -1336,11 +1342,11 @@
         \qquad\qquad\qquad\texttt{return;}\\
         \\
         \qquad\qquad\texttt{if (lottery.maturity + 128 <= block.number)}\\
-        \qquad\qquad\qquad\texttt{lottery.payer.send(countPayerDeposit(lottery.value));}\\
+        \qquad\qquad\qquad\texttt{lottery.payer.send(calculatePayerDeposit(lottery.value));}\\
         \qquad\qquad\texttt{else if~(lottery.maturity + 256 <= block.number)}\\
-        \qquad\qquad\qquad\texttt{msg.sender.send(countPayerDeposit(lottery.value));}\\
+        \qquad\qquad\qquad\texttt{msg.sender.send(calculatePayerDeposit(lottery.value));}\\
         \qquad\qquad\texttt{else}\\
-        \qquad\qquad\qquad\texttt{golem\_dep += countPayerDeposit(lottery.value);}\\
+        \qquad\qquad\qquad\texttt{golemDeposit += calculatePayerDeposit(lottery.value);}\\
         \\
         \qquad\qquad\texttt{lottery.randVal = random(lottery.maturity);}\\
         \qquad\qquad\texttt{lottery.maturity = 0;}\\
@@ -1426,8 +1432,8 @@
         \qquad\qquad\texttt{\} else \{}\\
         \qquad\qquad\qquad\texttt{if (msg.sender != winner \&\& block.number > lottery.maturity + agentMaturity) \{}\\
         \qquad\qquad\qquad\qquad\texttt{// Sender is~lottery agent}\\
-        \qquad\qquad\qquad\qquad\texttt{msg.sender.send(countAgentCommission(lottery.value));}\\
-        \qquad\qquad\qquad\qquad\texttt{winner.send(lottery.value - countAgentCommission(lottery.value));}\\
+        \qquad\qquad\qquad\qquad\texttt{msg.sender.send(calculateAgentCommission(lottery.value));}\\
+        \qquad\qquad\qquad\qquad\texttt{winner.send(lottery.value - calculateAgentCommission(lottery.value));}\\
         \qquad\qquad\qquad\texttt{\} else \{}\\
         \qquad\qquad\qquad\qquad\texttt{winner.send(lottery.value);}\\
         \qquad\qquad\qquad\texttt{\}}\\
@@ -1457,15 +1463,15 @@
         \qquad\qquad\texttt{return val / 2;}\\
         \qquad\texttt{\}}\\
         \\
-        \qquad\texttt{function countInitPayerDeposit(uint val) internal constant returns (uint) \{}\\
+        \qquad\texttt{function calculateInitialPayerDeposit(uint val) internal constant returns (uint) \{}\\
         \qquad\qquad\texttt{return val / 11;}\\
         \qquad\texttt{\}}\\
         \\
-        \qquad\texttt{function countPayerDeposit(uint val) internal constant returns (uint) \{}\\
+        \qquad\texttt{function calculatePayerDeposit(uint val) internal constant returns (uint) \{}\\
         \qquad\qquad\texttt{return val / 10;}\\
         \qquad\texttt{\}}\\
         \\
-        \qquad\texttt{function countAgentCommission(uint val) internal constant returns(uint) \{}\\
+        \qquad\texttt{function calculateAgentCommission(uint val) internal constant returns(uint) \{}\\
         \qquad\qquad\texttt{return val / 10;}\\
         \qquad\texttt{\}}\\
         \\
