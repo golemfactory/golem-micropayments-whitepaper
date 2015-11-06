@@ -91,6 +91,7 @@
         \item Task partitioning can range from~10 to~$10\;000$ subtasks.
         \item Task value can range from~\$1 to~$\$10\;000$.\marginpar{Czemu nie $\$1$--$\$\infty$?}
         \item Payment for~a~single subtask may be as low as \$0.01 or even \$0.001 for~some types of~tasks.
+          \marginpar{Typowa wielkość subtasku w godzinach CPU?}
     \end{itemize}
 
     The~main requirement for~any payment solution used in~Golem  is~that it should be decentralized and~not depend
@@ -112,11 +113,11 @@
     It seems more promising to~look at~available micropayment schemes based on~digital currencies such
     as Bitcoin \cite{BITCOIN}, which we do in Section~\ref{sec:cryptocurrencies}. In Section~\ref{sec:ethereum} we
     describe Ethereum, a platform for developing decentralized applications, and consider payment methods based
-    on Ethereum. In Section~\ref{sec:lottery} we describe the lottery payment scheme, in Section~\ref{sec:costs} 
-    we compare costs of various payment schemes based on Ethereum and in Section~\ref{sec:randomness} we discuss some
-    details of the lottery implementation. Section~\ref{sec:conclusion} contains concluding remarks. Technical
-    details are included in the Appendices~\ref{sec:lottery-description} and~\ref{sec:code}.
-    \marginpar{update}
+    on Ethereum. The bulk of the paper is devoted to one of these methods: the lottery payment scheme.
+    In Sections~\ref{sec:lottery} and \ref{sec:lottery-protocol} we describe the lottery protocol, in Section~\ref{sec:costs}
+    we compare the lottery with other methods cost-wise, in Section~\ref{sec:probabilistic} we analyse its
+    probabilistic properties. In Section~\ref{sec:randomness} we discuss some details of the lottery implementation.
+    Section~\ref{sec:conclusion} contains concluding remarks. Technical details are included in the Appendices.
 
 \section{Micropayments schemes for~cryptocurrencies}
 \label{sec:cryptocurrencies}    
@@ -125,7 +126,7 @@
     with~a~separate Bitcoin transaction. Although Bitcoin transaction fees are lower than for~bank-based transactions,
     a~transaction smaller than 0.01 \BTC{} ($\sim$ \$2.5 at~the~moment of~this writing) requires a~fee of
     0.0001 \BTC{} ($\sim$ \$0.025) to~discourage "dust" transactions that~bloat the~Bitcoin blockchain \cite{BITFEE}.
-    Such~a~fee may thus be be higher than the~transaction value.
+    Such~a~fee may thus be higher than the~transaction value.
 
     A~Bitcoin transaction may include many outputs, each to~a~different recipient, which~seems a~good match for
     one-to-many payments. We can therefore consider making a~single Bitcoin transaction with~a~separate output
@@ -781,7 +782,7 @@
     In this section we compare transaction fees in payment schemes
     considered in Section~\ref{sec:ethereum-schemes} for varying
     number of users. For each scheme we estimate the total amount of
-    gas required to pay for a single task.\marginpar{cost for whom?}
+    gas required to pay for a single task.
     For calculating the required amount of gas we take into account the
     following operations:
     \begin{itemize}
@@ -791,7 +792,6 @@
     \item writing new storage entry ($20\;000$ gas for each nonzero 256-bit word),
     \item modifying existing storage entry ($5\;000$ gas for each 256-bit word),
     \item computing SHA-3 hash ($222$ gas for hashing a 256-bit word).
-      \marginpar{Może być tak (new entry/existing entry)?}
     \end{itemize}
 
     Other operations have negligible cost. The costs are summarized in Table~\ref{table:costs}
@@ -897,16 +897,26 @@
 
 \section{Probabilistic analysis of the lottery approach}
 \label{sec:probabilistic}
+\newcommand{\total}[2]{\widehat{#1}_{#2}}
     In this section we examine some probabilistic characteristics of the lottery approach. A crucial property, from 
     the point of view of a Golem user, is that as the user participates in more and more lotteries, her income approaches
     the expected value. That is, the probability that the sum of rewards will be significantly different from the expected
-    value is getting lower as the number of attempts grows. Users may want to know how fast will their real income converge
-    to the expected value and may ask questions of the kind:
+    value is getting lower as the number of attempts grows. More formally, let us assume for simplicity that all lotteries
+    have the same reward $v$ and the same probability of winning $p$. For a fixed user, the expected value of the reward
+    from a single lottery is $v\cdot p$ and, since lotteries are independent, the expected value of the sum of rewards
+    from $n$ lotteries is $n\cdot v\cdot p$. Let $X_n$ be a random variable representing the sum of outcomes from $n$ lotteries.
+    From the law of large number it follows that for any positive $\epsilon$
+    \[
+    \lim_{n \to \infty} \mathrm{Pr}\left(\left| X_n - n\cdot v\cdot p \right| > \epsilon\right) = 0.
+    \]
+    %
+    Users may want to know how fast will their income converge to its expected value. More specifically, they may ask
+    questions of the kind:
     \begin{quote}
-      In how many lotteries should I participate to get at least 80\% of the expected income with 90\% probability.
+      What is the probability that I receive at least 80\% of the expected income after 100 lotteries?
     \end{quote}
-    For simplicity we assume that all lotteries have the same reward and the probability of winning $p$. The probability 
-    that the user wins exactly $k$ lotteries out of $n$ is given by the probability mass function of the binomial distribution:
+    The probability that the user wins exactly $k$ lotteries out of $n$ is given by the probability mass function
+    of the binomial distribution:
     \[
     f(k, n, p) = \binom{n}{k} p^{k} (1 - p)^{n - k} 
     \]
@@ -914,13 +924,14 @@
     \[
     F(k, n, p) = \sum_{i = k}^{n} f(i, n, p) = \sum_{i = k}^{n} \binom{n}{i} p^{i} (1 - p)^{n - i} 
     \]
-    Suppose the user participates in $n = 100$ lotteries, each with $p = 0.1$. The expected number of lotteries won is
-    $p\,n = 10$. The user will get at least 80\% of the expected income if it wins in at least $8$ lotteries, 
+    Suppose the user participates in $n = 100$ lotteries, each with $p = 1/10$. The expected number of lotteries won is
+    $p\cdot n = 10$. The user will get at least 80\% of the expected income if she wins in at least $80\cdot p\cdot n = 8$ lotteries, 
     the probability of which is $F(8, 100, 0.1) \approx 0.79$.
 
-    In Figure~\ref{fig:expected} we plot the values of $F(r * n, n, p)$ for $p = 0.1$ (lottery with 10 users)
-    and $r = 80\%$ and $r = 90\%$. As shown in the plot, getting 90\% of the reward with probability $0.9$
-    requires taking part in approximately $1\;400$ lotteries.
+    In Figure~\ref{fig:expected} we plot the values of $F(0.08, n, 0.1)$ and $F(0.09, n, 0.1)$ which represent the probability
+    that the user receives at least 80\% and at least 90\% of the expected income, respectively, after $n$ lotteries, each
+    with $10$ participants. The reader may check for example that getting 80\% of the reward with probability $0.9$ requires
+    approximately $300$ lotteries while getting 90\% of the reward with the same probability requires $1\;400$ lotteries.
     \begin{figure}
       \centering
       \includegraphics[scale=1.0]{prob10_80_90.pdf}
@@ -929,37 +940,38 @@
       \label{fig:expected}
     \end{figure}
     
-    Letus now examine how quickly a~lottery participant can receive her remuneration for~work. For simplicity let's assume
-    that~one person always count similar task with~the~same number of~compute users that~do the~same amount of~work
-    for~the~same rates. Therefore we can model a~lottery as a~Bernoulli trial. Probability of~success in~this trial is
-    equal to~$1/n$ where $n$ is~a~number of~participant. There prize is~equal to~$v$, where one person reward for~a
-    task should be $v/n$. Therefore a~participant expects to~receive a~reward after $n$ lotteries.
+    %% Let us now examine a second question of how quickly a~lottery participant can receive her remuneration for~work.
+    %% For simplicity let's assume
+    %% that~one person always count similar task with~the~same number of~compute users that~do the~same amount of~work
+    %% for~the~same rates. Therefore we can model a~lottery as a~Bernoulli trial. Probability of~success in~this trial is
+    %% equal to~$1/n$ where $n$ is~a~number of~participant. There prize is~equal to~$v$, where one person reward for~a
+    %% task should be $v/n$. Therefore a~participant expects to~receive a~reward after $n$ lotteries.
 
-    The~probability distribution of~the~number of~lotteries before~first winning is~a~geometric distribution with
-    $p = 1/n$. Probability that~a~user will have to~take part in~$k$ lotteries before~winning for~the first time is
-    equal to
-    \begin{displaymath}
-	    P(X = k) = \frac{1}{n} \cdot (1 - \frac{1}{n})^{k-1}
-	\end{displaymath}
+    %% The~probability distribution of~the~number of~lotteries before~first winning is~a~geometric distribution with
+    %% $p = 1/n$. Probability that~a~user will have to~take part in~$k$ lotteries before~winning for~the first time is
+    %% equal to
+    %% \begin{displaymath}
+    %%         P(X = k) = \frac{1}{n} \cdot (1 - \frac{1}{n})^{k-1}
+    %%     \end{displaymath}
 
-    Therefore probability that~she receives payment before~this time is~above 63\%, the~probability that~she has to~wait
-    no longer than $2 \cdot n$ lotteries  is~ above~$86\%$. See figures \ref{fig:geo} and~\ref{fig:geo100} for~details.
+    %% Therefore probability that~she receives payment before~this time is~above 63\%, the~probability that~she has to~wait
+    %% no longer than $2 \cdot n$ lotteries  is~ above~$86\%$. See figures \ref{fig:geo} and~\ref{fig:geo100} for~details.
 
-    \begin{figure}
-        \centering
-        \includegraphics[scale=0.6]{geo10.pdf}
-        \caption{Plot illustrates what is~a~probability of~waiting $k$ lotteries for~a first pize, when 10 participants
-        takes part in~every lottery}
-        \label{fig:geo}
-    \end{figure}
+    %% \begin{figure}
+    %%     \centering
+    %%     \includegraphics[scale=0.6]{geo10.pdf}
+    %%     \caption{Plot illustrates what is~a~probability of~waiting $k$ lotteries for~a first pize, when 10 participants
+    %%     takes part in~every lottery}
+    %%     \label{fig:geo}
+    %% \end{figure}
 
-    \begin{figure}
-        \centering
-        \includegraphics[scale=0.6]{geo100.pdf}
-        \caption{Plot illustrates what is~a~probability of~waiting $k$ lotteries for~a first pize, when
-        100 participants take part in~every lottery}
-        \label{fig:geo100}
-    \end{figure}
+    %% \begin{figure}
+    %%     \centering
+    %%     \includegraphics[scale=0.6]{geo100.pdf}
+    %%     \caption{Plot illustrates what is~a~probability of~waiting $k$ lotteries for~a first pize, when
+    %%     100 participants take part in~every lottery}
+    %%     \label{fig:geo100}
+    %% \end{figure}
 
 
 \section{Source of~randomness for~the~lottery implementation}
@@ -1323,8 +1335,8 @@
     A~\textbf{winner certificate} $C = (a, R, r, b_1, \ldots, b_d, w_1, \ldots, w_d)$ consists of
     \begin{itemize}
     \item an Ethereum address $a$ of~the~proposed winner,
-    \item S-bit words $R$ and~$r$ encoding respectively the beginning and the length of
-      the range within which the S-bit random value must fall,
+    \item $S$-bit words $R$ and~$r$ encoding respectively the beginning and the length of
+      the range within which the $S$-bit random value must fall,
     \item a~sequence $b_1, \ldots, b_d$ of~bits, with~$d \geq 0$,
     \item a~sequence $w_1, \ldots, w_d$ of~256-bit words.
     \end{itemize}
@@ -1338,7 +1350,7 @@
       \end{cases}
     \end{align*}
     %
-    Let $x$ be a~S-bit random value. $C$ is~\textbf{valid} for~$x$ if
+    Let $x$ be a~$S$-bit random value. $C$ is~\textbf{valid} for~$x$ if
     \begin{displaymath}
       R \leq x < R + r  \quad\text{and}\quad \hash{\hash{B(L)}, h_0} = h(L).
     \end{displaymath}
