@@ -1,5 +1,5 @@
 FILE=main
-GRAPHS=geo10.pdf geo100.pdf payments.pdf prob80_10.pdf prob80_100.pdf
+GRAPHS=geo10.pdf geo100.pdf payments.pdf prob10_80_90.pdf prob100_80_90.pdf
 
 all: $(FILE).pdf
 
@@ -19,11 +19,11 @@ geo10.pdf: geo.plt
 geo100.pdf: geo.plt
 	gnuplot -e "N = 100" geo.plt
 
-prob80_10.pdf: prob.plt
-	gnuplot -e "R = 0.8" -e "N = 10" prob.plt
+prob10_80_90.pdf: prob.plt
+	gnuplot -e "N = 10" -e "R1 = 0.8" -e "R2 = 0.9" prob.plt
 
-prob80_100.pdf: prob.plt
-	gnuplot -e "R = 0.8" -e "N = 100" prob.plt
+prob100_80_90.pdf: prob.plt
+	gnuplot -e "N = 100" -e "R1 = 0.8" -e "R2 = 0.9" prob.plt
 
 payments.pdf: payments.plt
 	gnuplot payments.plt

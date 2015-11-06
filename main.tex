@@ -895,6 +895,73 @@
     batched transfers or subaccounts method, to encourage nodes to participate. This may drastically limit the
     applicability of the lottery method.
 
+\section{Probabilistic analysis of the lottery approach}
+\label{sec:probabilistic}
+    In this section we examine some probabilistic characteristics of the lottery approach. A crucial property, from 
+    the point of view of a Golem user, is that as the user participates in more and more lotteries, her income approaches
+    the expected value. That is, the probability that the sum of rewards will be significantly different from the expected
+    value is getting lower as the number of attempts grows. Users may want to know how fast will their real income converge
+    to the expected value and may ask questions of the kind:
+    \begin{quote}
+      In how many lotteries should I participate to get at least 80\% of the expected income with 90\% probability.
+    \end{quote}
+    For simplicity we assume that all lotteries have the same reward and the probability of winning $p$. The probability 
+    that the user wins exactly $k$ lotteries out of $n$ is given by the probability mass function of the binomial distribution:
+    \[
+    f(k, n, p) = \binom{n}{k} p^{k} (1 - p)^{n - k} 
+    \]
+    Therefore, the probability that the user wins at least $k$ lotteries out of $n$ is
+    \[
+    F(k, n, p) = \sum_{i = k}^{n} f(i, n, p) = \sum_{i = k}^{n} \binom{n}{i} p^{i} (1 - p)^{n - i} 
+    \]
+    Suppose the user participates in $n = 100$ lotteries, each with $p = 0.1$. The expected number of lotteries won is
+    $p\,n = 10$. The user will get at least 80\% of the expected income if it wins in at least $8$ lotteries, 
+    the probability of which is $F(8, 100, 0.1) \approx 0.79$.
+
+    In Figure~\ref{fig:expected} we plot the values of $F(r * n, n, p)$ for $p = 0.1$ (lottery with 10 users)
+    and $r = 80\%$ and $r = 90\%$. As shown in the plot, getting 90\% of the reward with probability $0.9$
+    requires taking part in approximately $1\;400$ lotteries.
+    \begin{figure}
+      \centering
+      \includegraphics[scale=1.0]{prob10_80_90.pdf}
+      \caption{A probability of receiving at~least 80\% or 90\% of~expected income after $n$
+        lotteries with 10 participants}
+      \label{fig:expected}
+    \end{figure}
+    
+    Letus now examine how quickly a~lottery participant can receive her remuneration for~work. For simplicity let's assume
+    that~one person always count similar task with~the~same number of~compute users that~do the~same amount of~work
+    for~the~same rates. Therefore we can model a~lottery as a~Bernoulli trial. Probability of~success in~this trial is
+    equal to~$1/n$ where $n$ is~a~number of~participant. There prize is~equal to~$v$, where one person reward for~a
+    task should be $v/n$. Therefore a~participant expects to~receive a~reward after $n$ lotteries.
+
+    The~probability distribution of~the~number of~lotteries before~first winning is~a~geometric distribution with
+    $p = 1/n$. Probability that~a~user will have to~take part in~$k$ lotteries before~winning for~the first time is
+    equal to
+    \begin{displaymath}
+	    P(X = k) = \frac{1}{n} \cdot (1 - \frac{1}{n})^{k-1}
+	\end{displaymath}
+
+    Therefore probability that~she receives payment before~this time is~above 63\%, the~probability that~she has to~wait
+    no longer than $2 \cdot n$ lotteries  is~ above~$86\%$. See figures \ref{fig:geo} and~\ref{fig:geo100} for~details.
+
+    \begin{figure}
+        \centering
+        \includegraphics[scale=0.6]{geo10.pdf}
+        \caption{Plot illustrates what is~a~probability of~waiting $k$ lotteries for~a first pize, when 10 participants
+        takes part in~every lottery}
+        \label{fig:geo}
+    \end{figure}
+
+    \begin{figure}
+        \centering
+        \includegraphics[scale=0.6]{geo100.pdf}
+        \caption{Plot illustrates what is~a~probability of~waiting $k$ lotteries for~a first pize, when
+        100 participants take part in~every lottery}
+        \label{fig:geo100}
+    \end{figure}
+
+
 \section{Source of~randomness for~the~lottery implementation}
 \label{sec:randomness}
     In our lottery implementation we use the~hash of~a~future block as the~source of~randomness. This solution has
@@ -1477,59 +1544,5 @@
         \\
         \texttt{\}}\\
     \end{tabularx}
-
-\section{Probabilities}
-
-    Let's examine how quickly a~lottery participant can receive her remuneration for~work. For simplicity let's assume
-    that~one person always count similar task with~the~same number of~compute users that~do the~same amount of~work
-    for~the~same rates. Therefore we can model a~lottery as a~Bernoulli trial. Probability of~success in~this trial is
-    equal to~$1/n$ where $n$ is~a~number of~participant. There prize is~equal to~$v$, where one person reward for~a
-    task should be $v/n$. Therefore a~participant expects to~receive a~reward after $n$ lotteries.
-
-    The~probability distribution of~the~number of~lotteries before~first winning is~a~geometric distribution with
-    $p = 1/n$. Probability that~a~user will have to~take part in~$k$ lotteries before~winning for~a first time is
-    equal to
-    \begin{displaymath}
-	    P(X = k) = \frac{1}{n} \cdot (1 - \frac{1}{n})^{k-1}
-	\end{displaymath}
-
-    Therefore probability that~she receive payment before~this time is~above 63\%, the~probability that~she has to~wait
-    no longer than $2 \cdot n$ lotteries  is~ above~$86\%$. See figures \ref{fig:geo} and~\ref{fig:geo100} for~details.
-
-    \begin{figure}
-        \centering
-        \includegraphics[scale=0.6]{geo10.pdf}
-        \caption{Plot illustrates what is~a~probability of~waiting $k$ lotteries for~a first pize, when 10 participants
-        takes part in~every lottery}
-        \label{fig:geo}
-    \end{figure}
-
-    \begin{figure}
-        \centering
-        \includegraphics[scale=0.6]{geo100.pdf}
-        \caption{Plot illustrates what is~a~probability of~waiting $k$ lotteries for~a first pize, when
-        100 participants take part in~every lottery}
-        \label{fig:geo100}
-    \end{figure}
-
-    Let's now examine how high is~the~probability of~receiving a~whole earned amount in~a~long run. If~a~user took part
-    in~$k$ lotteries, than his expected income should be equal to~$k/n$. We would like to~know what is~a~probability
-    of~receiving at~least  80\% of~this value. We can use a~binomial cumulative distribution function for~this.
-    The~probability can be described with~a~formula
-    \begin{displaymath}
-        1 - F((\frac{k}{n})\cdot 80\%, k, \frac{1}{n}) + f((\frac{k}{n})\cdot 80\%, k, \frac{1}{n}))
-    \end{displaymath}
-    where $f$ is~binomial probability mass function and~$F$ is~binomial cumulative distribution function.
-
-    For 50 lotteries the~probability is~$\sim$75\%  and~for~300 above~$90\%$. See figure \ref{fig:prob} for~details.
-
-
-    \begin{figure}
-        \centering
-        \includegraphics[scale=0.8]{prob80_10.pdf}
-        \caption{Plot illustrates what is~a~probability of~receiving at~least 80\% of~expected income after $k$
-        lotteries when 10 participants take part in~every lottery}
-        \label{fig:prob}
-    \end{figure}
 
 \end{document}
