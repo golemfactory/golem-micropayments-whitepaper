@@ -8,7 +8,7 @@ all: $(FILE).pdf
 clean:
 	rm -f *.pdf *.aux *.out *.log *.bbl *.blg
 
-$(FILE).pdf: $(FILE).tex $(GRAPHS)
+$(FILE).pdf: $(FILE).tex merkle.tex $(GRAPHS)
 	pdflatex $(FILE)
 	pdflatex $(FILE)
 	rm -f *.aux *.out *.log *.toc *.bbl *.blg 

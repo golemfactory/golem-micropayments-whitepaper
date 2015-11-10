@@ -2,7 +2,7 @@
 % Requires \usepackage{pgfplots} 
 
 \begin{tikzpicture}[level/.style={sibling distance=8cm/#1}]
-\renewcommand{\hash}[1]{\mathrm{hash}({#1})}
+%\renewcommand{\hash}[1]{\mathrm{hash}({#1})}
 \node [rectangle, draw] (c)  {$h_0 = \hash{h_1, w_1}$}
 	child { node [rectangle, draw] (l)  {$h_1 = \hash{w_2, h_2}$}  
 		child { node [circle, draw, minimum size=0.8cm] (ll) {$w_2$} 
