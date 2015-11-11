@@ -54,7 +54,7 @@
     many payments, but subsequent payments of~a~single payer may
     have different groups of~recipients. Also, we
     assume that~payments result from~activities carried out in~a
-    decentralized peer-to-peer network, so we would like to~avoid
+    decentralised peer-to-peer network, so we would like to~avoid
     solutions relying on~any trusted third party. We cannot therefore use
     existing solutions that~require a~central server or assume that~a
     payer makes a~series of~payments to~a~single recipient (Bitcoin
@@ -63,11 +63,11 @@
     Instead, we propose a~probabilistic payment scheme in~which only one
     recipient randomly chosen from~a~group of~candidates  is~rewarded in
     a~single payment. Our solution  is~based on~Ethereum and~is~thus
-    decentralized and~avoids relying on~a~trusted third party. We describe
+    decentralised and~avoids relying on~a~trusted third party. We describe
     an~Ethereum smart contract implementing a~lottery used to~reward
     recipients and~calculate the~cost of~running it. Depending on~the
     variant of~the~protocol, this cost  is~either proportional to~the
-    logarithm ofthe~number of~recipients or constant. In both cases,
+    logarithm of the~number of~recipients or constant. In both cases,
     the~cost of~running a~lottery with~$1\,000$~participants is~similar
     to~the~cost of~direct payments to~20~recipients.
 \end{abstract}
@@ -79,7 +79,7 @@
     development at imapp.\footnote{%
       \url{http://www.imapp.pl}} The~aim of~the Golem project is~to create a~global prosumer market for~computing power,
     in~which producers may sell spare CPU time of~their personal computers and~consumers
-    may acquire resources for~computation-intensive tasks. In technical terms, Golem is designed as a~decentralized
+    may acquire resources for~computation-intensive tasks. In technical terms, Golem is designed as a~decentralised
     peer-to-peer network established by~nodes running the~Golem client software. For the~purpose of~this paper
     we assume that~there are two types of~nodes in~the~Golem network: \textbf{requester nodes} that~announce computing
     tasks and~\textbf{compute nodes} that~perform computations (in the~actual implementation nodes may switch between
@@ -99,37 +99,29 @@
     \item Tasks can be partitioned into a few or thousands of subtasks. 
     \item Task value can range from one to thousands of dollars.
     \item Payment for~a~single subtask may be as low as a fraction of cent (\$0.01 is roughly the cost of electricity
-      consumed by an average workstation using 200 watts for 15 min, assumming the price of electricity is \$0.20 for 1 kWh).
+      consumed by an average workstation using 200 watts for 15 min, assuming the price of electricity is \$0.20 for 1 kWh).
     \end{itemize}
 
-    The~main requirement for~any payment solution used in~Golem  is~that it should be decentralized and~not depend
+    The~main requirement for~any payment solution used in~Golem  is~that it should be decentralised and~not depend
     on~any trusted authorities (banks, brokers).
 
     We should not expect that~after a~payment for~a~subtask  is~made, another payment with~the~same payer and~recipient
     will occur in~a~short time. That is, it may not be possible to~accumulate payments made by~one payer and~transfer
     the~larger sum using a~single transaction. On the~other hand, we may consider methods that~assume recurring
-    payments to~a~single payee: a~compute node does not necessarily have to~be paid a~tiny sum for~each
+    payments to~a~single recipient: a~compute node does not necessarily have to~be paid a~tiny sum for~each
     subtask but instead may be paid larger sums once in~a~while. The~obvious requirement  is~that in~the~long run
     the~node's income should approach the~sum of~subtask values that~this node has computed.
 
-    The last requirement for a micropayment solution is that the transaction fees should not exceed 1\% (up to an order of
-    magnitude). More precisely, % in the setting of one-to-many payments in Golem this means that
-    no more than 1\% of the task value should be used for cover transaction fees required for paying the compute nodes.
-    Thus for example a payment for a task worth \$1 and performed by 10 compute nodes should incur no more than few cents
-    of transaction fees.
-    %, and for any computing node no more than 1\% of this node's remuneration
-    %should be used to cover transaction fees, at least in the long run.
-    %
-    %Thus we are looking for~a~micropayments solution that~handles payments as small as \$0.01 with~transaction fees
-    %that sum up to approximately 1\% of the task value or less.
-    This requirement rules out traditional methods such as bank-based
+    The last requirement for a payment solution is that the transaction fees should not exceed 1\% (up to an order of
+    magnitude). Thus for example a payment for a task worth \$1 and performed by 10 compute nodes should incur no more than 
+    few cents of transaction fees in total. This requirement rules out traditional methods such as bank-based
     transactions, credit card transactions or PayPal, since~transaction fees they incur are in~the~order of~\$0.1,
     plus a~percentage of~the~transaction value (see e.g. \cite{FRS}), and paying to 10 compute nodes would multiply the fees
     tenfold.
 
     It seems more promising to~look at~available payment schemes based on~digital currencies such
     as Bitcoin \cite{BITCOIN}, which we do in Section~\ref{sec:cryptocurrencies}. In Section~\ref{sec:ethereum} we
-    describe Ethereum, a platform for developing decentralized applications, and consider payment methods based
+    describe Ethereum, a platform for developing decentralised applications, and consider payment methods based
     on Ethereum. The bulk of the paper is devoted to one of these methods: the lottery payment scheme.
     In Sections~\ref{sec:lottery} and \ref{sec:lottery-protocol} we describe the lottery protocol, in Section~\ref{sec:costs}
     we compare the lottery with other methods cost-wise, in Section~\ref{sec:probabilistic} we analyse its
@@ -153,7 +145,7 @@
     \begin{displaymath}
       \texttt{transaction\_size} = 148 * \texttt{number\_of\_inputs} + 34 * \texttt{number\_of\_outputs} + 10
     \end{displaymath}
-    we may estimate that~a~transaction with~100 payees will cost at~least \$0.1 and~the~cost will rise as the~coins
+    we may estimate that~a~transaction with~100 recipients will cost at~least \$0.1 and~the~cost will rise as the~coins
     become fragmented and~require a~large number of~inputs. However, as fees in~Bitcoin are~market-based rather than
     hard coded, miners may at~some point start requiring higher fees for~processing transactions \cite{KASKALOGLU}.
     According estimates in \cite{ANDRESEN}, miners should require a~fee of
@@ -165,7 +157,7 @@
     of~participants. For other scenarios a~different payment scheme has to~be used.
 
     For completeness we also mention Bitcoin micropayment channels (\cite{BITCOINJ}), but this solution does not fit
-    our setting as it assumes that~a~payer makes a~series of~micropayments to~one recipient.
+    our setting as it assumes that~a~payer makes a~series of~payments to~one recipient.
     There  is~also a~number of~custom micropayment solutions such as Coinbase Tip \cite{COINTIP}(no longer active),
     or ChangeTip \cite{CHANGETIP} but they rely on~a~trusted third-party that~processes transactions off-chain,
     which~we definitely want to~avoid in~Golem.
@@ -200,11 +192,11 @@
     to~reward the~participants of~a~single task, exactly one ticket is~winning. For example, if~there are 100
     participants then each of~them has $1/100$ chance of~winning, as before, but the~requester has guarantee that
     task value will have to~be paid only once. In other words, after the~task is~completed the~requester will have
-    to~organize a~lottery for~the~participants, in~which exactly one participant wins.\footnote{This can be easily
-    generalized to~a~constant number $n$ of~winners ($n > 0$) for~a~lottery, each rewarded with~$1/n$ of~the~task
+    to~organise a~lottery for~the~participants, in~which exactly one participant wins.\footnote{This can be easily
+    generalised to~a~constant number $n$ of~winners ($n > 0$) for~a~lottery, each rewarded with~$1/n$ of~the~task
     value.}
     The~drawback of~this approach is~that it requires a~protocol that~involves a~large group of~participants:
-    the~payer and~all the~payees.
+    the~payer and~all the~recipients.
     Such a~protocol is~more complex than in~a~one-to-one scenario where each lottery ticket is~evaluated separately.
 
     In the~rest of~this paper we describe and~compare several possible payment schemes (most of~them briefly) in~the
@@ -212,7 +204,7 @@
 
 \section{Ethereum}
 \label{sec:ethereum}
-    Ethereum \cite{ETHEREUM} is~a~decentralized, blockchain-based crypto currency system, but also a~platform
+    Ethereum \cite{ETHEREUM} is~a~decentralised, blockchain-based cryptocurrency system, but also a~platform
     for~development of~distributed applications. In Ethereum it is~possible to~implement arbitrary complex rules
     required by~a~payment scheme as \textbf{smart contracts} in~a~high-level programming language (we use Solidity
     \cite{SOLIDITY}, in~this paper).
@@ -235,7 +227,7 @@
     amount of~gas which~reflects a~computational cost of~processing the~instruction by~Ethereum nodes. Gas has to~be
     purchased with~Ether by~the~user who~wishes to~run a~contract. Paying for~gas is~the~analogue of~transaction fees
     in~Bitcoin. Gas price is~market-based: each transaction specifies the~maximum price its sender is~willing to~pay
-    for~a gas unit and~miners may prioritize transactions based on~this information. So to~estimate the~cost in~USD
+    for~a gas unit and~miners may prioritise transactions based on~this information. So to~estimate the~cost in~USD
     of~executing a~contract we have to~take into~both the~current average gas price and~the~price of~Ether.
     On the~other hand, in~order to~compare different payment schemes implemented a~Ethereum contracts we can simply
     compare their cost in~gas units.
@@ -265,8 +257,8 @@
 
     \subsection{Infrastructure of Ethereum Contracts}
     Some of~the~problems listed above~may be solved by~smart contracts provided by~Ethereum community independent of
-    Golem. For example, there exist preliminary implementations of \randao{} (RANdom generating Decentralized Autonomous
-    Organization) which generate random numbers from users' input. Users are paid for providing inputs with
+    Golem. For example, there exist preliminary implementations of \randao{} (RANdom generating Decentralised Autonomous
+    Organisation) which generate random numbers from users' input. Users are paid for providing inputs with
     money paid by users that consume random numbers. The two \randao{} implementations we are aware of are \cite{RANDAO}
     (compatible with obsolete POC5 version of Ethereum) and \cite{RANDAO2} (more up-to-date).
 
@@ -314,7 +306,7 @@
     more accurate cost estimates).
 
     \paragraph{Lottery.} 
-    This is~a~probabilistic approach in~which the~requester organizes a~lottery in~which only one compute node
+    This is~a~probabilistic approach in~which the~requester organises a~lottery in~which only one compute node
     wins. In this scenario the~cost is~generated mainly by~the~size of~data that~needs to~be transferred to
     the~contract. This approach is~described in~Section \ref{sec:lottery} and its cost is estimated in Section~\ref{sec:costs}.
 
@@ -325,11 +317,11 @@
     transactions off-chain. Unfortunately, as in~the~case of~Bitcoin micropayment channels \cite{BITCOINJ} this
     solution is~designed for~many 1-1 microtransactions between two given parties. The~cost of~opening a~channel
     is~quite large (at least the~cost of~adding 5 new storage fields $20\,000$ gas each) and~channel endpoints might
-    never cooperate again. Additionally, a~micropayment channel requires an~escrow, so if~a~requester has to~open
+    never cooperate again. Additionally, a~micropayment channel requires a security deposit, so if~a~requester has to~open
     many channels the~deposits may sum up to~a~large amount.
 
     \paragraph{Bank-set approach.}
-    Most micropayments protocols for~P2P networks require some sort of~a~centralized institution (bank) that~is
+    Most micropayments protocols for~P2P networks require some sort of~a~centralised institution (bank) that~is
     in~charge of~approving transactions \cite{JAIN}. One idea is~to replace this institution with~a~set of~peers
     (an approach similar to~the~Karma protocol \cite{VISHNUMURTHY}) that~keep track of~transactions and~user accounts.
     The~requester pays the~total amount of~ether for~each task into~one joint Ethereum contract.
@@ -341,11 +333,11 @@
 \section{Lottery}
 \label{sec:lottery}
 
-    Our proposed solution allows the~payer to~avoid making separate transactions to~each of~the~payees. Instead,
-    the~whole task value is~paid to~only one payee, chosen randomly. This way, paying for~the~task requires only
-    a~small number of~transactions, independent of~the~number of~payees.
+    Our proposed solution allows the~payer to~avoid making separate transactions to~each of~the~participants. Instead,
+    the~whole task value is~paid to~only one participant, chosen randomly. This way, paying for~the~task requires only
+    a~small number of~transactions, independent of~the~number of~compute nodes involved.
 
-    The~idea is~to organize a~lottery for~payees, with~the~reward equal to~the~total value of~the~task. The~lottery
+    The~idea is~to organise a~lottery for~payees, with~the~reward equal to~the~total value of~the~task. The~lottery
     has only one winner, other participants get nothing. For $i$-th participant the~probability of~winning is~set to
     $v_i/v$, where $v_i$ is~the~payment due to~this participant for~computing a~subtask and~$v$ is~the~value of~the
     whole task. Thus the~expected value of~the~outcome for~this participant is~$(v_i/v)\,v = v_i$. If the participants
@@ -389,7 +381,7 @@
     contract.
 
     A~standard way to~implement this rather abstract assumption in~a~blockchain setting is~to use the~hash of~some
-    future block as a~random value. When the~lottery is~initialized the~contract increments the~number of~the~current
+    future block as a~random value. When the~lottery is~initialised the~contract increments the~number of~the~current
     Ethereum block by~a~fixed number, determining the~number of~a~deciding block. The~hash of~this future block will
     be used to~determine the~lottery winner. There is~a~problem though with~implementing this simple solution in
     Ethereum (see Section \ref{sec:problem256} for~details).
@@ -511,7 +503,7 @@
     \begin{itemize}
         \item \verb!function lotteryInit(bytes32 lotteryHash)!
 
-            The~sender Initializes a~lottery. Lottery value is~transferred to~the~lottery contract and~a~structure
+            The~sender Initialises a~lottery. Lottery value is~transferred to~the~lottery contract and~a~structure
             with~lottery data is~created in~the~storage. \texttt{lotteryHash} is~the~value used as a~key to~retrieve
             lottery data from~the~contract storage (see Appendix \ref{sec:lottery-description} for~information on how it
             is~computed). 
@@ -586,7 +578,7 @@
     will update the~field \texttt{deadline} in~the~\texttt{LotteryData} struct for~a~lottery with~hash
     \texttt{lotteryHash}. One difference from~JavaScript is~that in~Solidity a~\texttt{mapping} is~a~total
     function, in~particular \texttt{lotteries} initially maps all possible key values to
-    a~\texttt{LotteryData} struct with~all fields initialized to~0. To check if~a~lottery data has been initialized
+    a~\texttt{LotteryData} struct with~all fields initialised to~0. To check if~a~lottery data has been initialised
     we will check if~\texttt{lotteries[lotteryHash].value} is~nonzero.
 
 
@@ -612,11 +604,11 @@
 	      \verb!lotteries[lotteryHash].value == 0!
             \end{quote}
             %
-            \textbf{Effects}: The~message transfers the~lottery value $v$ and~the~payer deposit (additional 10\%
-            of~$v$) to~the~contract and~stores the~\texttt{LotteryData} struct for~the~new lottery. The~field value
-            is~set to~$10/11$ of~the~value transferred by~the~\texttt{message} and~and the~remaining $1/11$ of~this value
-            is~treated. Field \texttt{maturity} is~initialized with~argument $m$ and~\texttt{payer} is~initialized with
-            the~sender's address. The~remaining fields are initialized with~zeros.
+            \textbf{Effects}: The~message transfers the~lottery value $v$ and~the~payer deposit to~the~contract and~stores 
+            the~\texttt{LotteryData} struct for~the~new lottery. The~field \verb!value! is~set to~$10/11$ of~the~value 
+            transferred by~the~\texttt{message} and~and the~remaining $1/11$ of~this value is~treated as the deposit. 
+            The field \texttt{maturity} is~initialised with~argument $m$ and~\texttt{payer} is~initialised with
+            the~sender's address. The~remaining fields are initialised with~zeros.
             \begin{quote}
               \verb!lotteries[lotteryHash] = LotteryData(value, block.number + maturity,!\\
               \verb!                                     0, 0, msg.sender, 0)!
@@ -628,7 +620,7 @@
             \textbf{Preconditions}:
             \begin{enumerate}
                 \item The~value field of~the~\texttt{LotteryData} for~the~lottery has been set (meaning that~the
-                lottery has been initialized but not finalized yet).
+                lottery has been initialised but not finalised yet).
                 \begin{quote}
                   \verb|lotteries[lotteryHash].value != 0|
                 \end{quote}
@@ -766,8 +758,8 @@
             \end{enumerate}
     \end{enumerate}
 
-    \paragraph{Storage size optimization.}
-    In the final version of the contract we optimize the storage size
+    \paragraph{Storage size optimisation.}
+    In the final version of the contract we optimise the storage size
     of \verb!LotteryData!. The values of both maturity and deadline
     can be kept in the same field of the struct, as they have the same
     size and are never required at the same time: deadline is only set
@@ -790,8 +782,8 @@
     instead of 5 allows us to cut the cost of \verb!initLottery! in half.
 
     When estimating gas use (and cost in ethers) of the messages we
-    assume the optimization has been done, even though for simplicity
-    in Appendix~\ref{sec:code} we show contract code before optimization.
+    assume the optimisation has been done, even though for simplicity
+    in Appendix~\ref{sec:code} we show contract code before optimisation.
     
 \section{Cost Comparison}
 \label{sec:costs}
@@ -803,23 +795,27 @@
     following operations:
     \begin{itemize}
     \item sending a message to a contract ($21\,000$ gas),
-    \item tranfering data to a contract ($68$ gas for one nonzero byte),
+    \item transferring data to a contract ($68$ gas for one nonzero byte),
     \item transferring ether to other account in a contract ($9\,000$ gas),
     \item writing new storage entry ($20\,000$ gas for each nonzero 256-bit word),
     \item modifying existing storage entry ($5\,000$ gas for each 256-bit word),
     \item computing SHA-3 hash ($222$ gas for hashing a 256-bit word).
     \end{itemize}
 
-    Other operations have negligible cost. The costs are summarized in Table~\ref{table:costs}
+    Other operations have negligible cost. The costs are summarised in Table~\ref{table:costs}
     and shown in graphical form in Figure~\ref{fig:costs}.
+
+    \newcolumntype{L}[1]{>{\raggedright\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+    \newcolumntype{C}[1]{>{\centering\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+    \newcolumntype{R}[1]{>{\raggedleft\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
     \begin{table}
-      \begin{tabular}{p{9em}p{4em}p{7em}p{6em}p{6em}p{6em}}
+      \begin{tabular}{p{9em}R{4em}R{7.2em}R{6em}R{6em}R{6.4em}}
         \hline
-        Method & Constant cost & Cost per user& Cost for~10 users & Cost for~100 users & Cost for~$1\,000$ users \\ \hline
-        Batched transfers   & $21\,000$  & $11\,000$ & $130\,000$  & $1.1$ mln  & $11.2$ mln \\ %\hline
-        Subaccounts         & $21\,000$  & $8\,000$  & $100\,000$  & $840\,000$ &  $8.2$ mln \\ %\hline
-        Lottery (check)     & $140\,000$ & $\log_2(n)/n \cdot 2\,700 $ & $150\,000$ & $155\,000$ & $165\,000$ \\ %\hline
-        Lottery (optimistic)& $155\,000$ & 0 & $155\,000$ & $155\,000$ & $155\,000$ \\ \hline
+        Method & Constant cost & Cost per user& Cost for~10 users  & Cost for~100 users   & Cost for~$1\,000$ users \\ \hline
+        Batched transfers   & $21\,000$  & $11\,000$ & $130\,000$  & $1.1$ mln  & $11.2$ mln \\
+        Subaccounts         & $21\,000$  & $8\,000$  & $100\,000$  & $840\,000$ & $8.2$ mln \\
+        Lottery (check)     & $140\,000$ & $(\log_2(n)/n) 2\,700$ & $150\,000$ & $155\,000$ & $165\,000$ \\
+        Lottery (optimistic)& $155\,000$ & $0$       & $155\,000$ & $155\,000$ & $155\,000$ \\ \hline
       \end{tabular}
       \caption{Transaction costs in gas for different payment methods.}
       \label{table:costs}
@@ -847,16 +843,16 @@
     fee for a single task does not exceed $1\,000$ gas. Thus per-user cost
     in the subaccount approach is estimated at $8\,000$ gas ($2\,000$ for passing
     the recipient's address and payment value to the contract, $5\,000$ for
-    updating the balance and $1\,000$ as the amortized cost of transferring ether
+    updating the balance and $1\,000$ as the amortised cost of transferring ether
     from the subaccount).
 
     In both variants of the lottery approach, payer fees are constant
-    ($\sim 100$k gas for initializing the lottery and capturing the
+    ($\sim 100$k gas for initialising the lottery and capturing the
     hash of the deciding block) independent on the number of
     participants. The winner is free to decide which variant to choose.
     If the number of participants does not exceed $128$ then sending \verb!lotteryCheck!
     is the cheapest option, for larger number of participants the optimistic
-    variant has lower fees. There is however a tradeoff: optimistic approach has
+    variant has lower fees. There is however a trade-off: optimistic approach has
     lower transaction fees but the winner has to wait approximately 24 hours after
     sending the \verb!lotteryWinner! message to collect the reward. 
 
@@ -891,7 +887,7 @@
     \end{table}
 
     \subsection{So, Which Payment Method Should I Use to Pay for My Task?}
-    Assumming the payer wants to keep transaction fees on the level of $1\%$,
+    Assuming the payer wants to keep transaction fees on the level of $1\%$,
     direct transfers or subaccounts are appropriate for tasks in which
     each participant is to be paid at least $\$0.1$, for example a
     task worth \$1 computed by $10$ users or a task worth $\$1\,000$
@@ -899,13 +895,13 @@
 
     A lottery must be used for tasks in which participants are to be paid less than $\$0.1$.
     It may also be used if there are at least 20 participants and the payer wants to
-    minimize transaction fees even at the cost of using a more complex and probabilistic payment method.
+    minimise transaction fees even at the cost of using a more complex and probabilistic payment method.
     Note that the constant cost of the lottery approach is low enough to make it suitable for tasks with
     total value of $\$1$, which is the minimum task value Golem will need to handle (see Section~\ref{sec:intro}).
 
     When comparing costs of various methods we should take into account another factor besides gas requirements.
     Namely, if given a choice users will probably prefer to participate in tasks for which payment is made with
-    deterministic methods and the outcome is more predictable. For similar reasons, lotteries with less paricipants
+    deterministic methods and the outcome is more predictable. For similar reasons, lotteries with less participants
     will be preferred, as they are more likely to provide a reward.
     If the compute nodes are in short supply, lottery rewards will have to be higher than task value paid with
     batched transfers or subaccounts method, to encourage nodes to participate. This may drastically limit the
@@ -998,7 +994,7 @@
     the~winning address. Clearly, if~the~lottery reward is~small compared to~the~reward for~finding a~new block
     then it is~not profitable to~withhold a~block to~change the~odds of~winning a~lottery. Thus one way to~circumvent
     this problem is~to limit the~maximum lottery reward and~in~case the~task value exceeds this limit, split payees
-    into~several groups and~organize a~separate lottery for~each group, with~a~fraction of~the~task value as the
+    into~several groups and~organise a~separate lottery for~each group, with~a~fraction of~the~task value as the
     reward.
 
     The~second problem is~due to~the~fact that~only the~hashes of~past 256 blocks are available in~the~contract
@@ -1016,7 +1012,7 @@
     The~protocol needs to~deal with~situations in~which some participants fail to~reveal their data. This may be due
     to~communication failure or may be done on~purpose. Assume one participant delayed revealing her data until~all
     other data are revealed. This participant has now full information required to~determine who~the~winner is,
-    and~may decide to~quit the~protocol after deciding that~its outcome is unfavorable.\footnote{We assume
+    and~may decide to~quit the~protocol after deciding that~its outcome is unfavourable.\footnote{We assume
     the~participants commit to~their data before~the~protocol starts, for~example using hash functions,
     so changing the~data at~this point is~not an~option.}
 
@@ -1028,7 +1024,7 @@
     In the~second case, participants may collude to~affect the~outcome. Suppose there is~a~group of~participants
     cooperating to~increase the~chance of~one of~them winning. Now, one of~the~group may delay revealing the~last
     piece of~data and~quit if~the~winner would not be a~member of~the~group, and~the~procedure would need to~be
-    repeated. Obviously, such behavior increases the~chances that~a~group member will finally turn out to~be the
+    repeated. Obviously, such behaviour increases the~chances that~a~group member will finally turn out to~be the
     winner and~thus makes the~whole protocol unfair.\footnote{We may consider a~modification of~the~protocol in~which
     the~order in~which the~participants reveal their data is~fixed in~some fair way. However, there will still be
     a~possibility that~the~last participant to~reveal her data is~a~member of~the~group.}
@@ -1069,7 +1065,7 @@
     %
     The~cost of~a~call to~\verb!feed! is~$26\,000$ gas ($21\,000$ for~a transaction and $5\,000$ for~updating storage)
     and~\verb!feed! should be called at~least every 100 blocks, that~is, roughly $20\,000$ times a~year. With the~current
-    price of~gas and~Ether, the~cost of~running the~contract is~approx \$20 per~year. The~cost of~contract initialization and
+    price of~gas and~Ether, the~cost of~running the~contract is~approx \$20 per~year. The~cost of~contract initialisation and
     storing first 100 hashes is~negligible (well below~\$1). The~cost of~calling \verb!get! is~slightly above~$21\,000$ gas
     (reading from~storage is~cheap compared to~writing).
 
@@ -1079,12 +1075,12 @@
 \section{Conclusion}
 \label{sec:conclusion}    
     In this paper we present several approaches to~one-to-many micropayments in~the~context of~the~Golem
-    project. We require solution that~is~decentralized, provides secure transactions without any trusted authorities
+    project. We require solution that~is~decentralised, provides secure transactions without any trusted authorities
     and, additionally, does not assume that a~payer makes a~series of~micropayments to~a~single recipient.
-    On the other hand, we do assume that~one recipeint receives a~series of~micropayments from~many payers.
+    On the other hand, we do assume that~one recipient receives a~series of~micropayments from~many payers.
     The main problem is how to design the payment scheme to keep transaction fees in the order of 1\% or less.
 
-    Cryptocurrencies provide decentralized and secure transaction platform, so we first consider basing our solution
+    Cryptocurrencies provide decentralised and secure transaction platform, so we first consider basing our solution
     on Bitcoin, by far the most widely used cryptocurrency. It turns out that transaction fees in Bitcoin
     are too high to guarantee a safety margin against possible changes of Bitcoin price in fiat currencies, especially
     if there are 100 or more transaction recipients. To make things worse, there are reasons to expect that
@@ -1093,7 +1089,7 @@
     We then turn our attention to Ethereum. A straightforward approach---batching many direct transfers in a
     single Ethereum transaction---is cheaper than in Bitcoin, but still within the same order of magnitude.
     Transaction fees may be somewhat reduced if payments for a single recipient are accumulated on this
-    recipient's ``subaccount'' managed by an Ethereum contract. The cost of all these straigthforward methods
+    recipient's ``subaccount'' managed by an Ethereum contract. The cost of all these straightforward methods
     is proportional to the number of task participants, not to the task value. This means that there is penalty
     for distributing tasks to larger number of participants: we estimate that if a payment for computing a single
     subtask is lower than $\$0.1$ then transaction costs exceed 1\% of the task value (with the costs of gas and
@@ -1112,10 +1108,10 @@
     may prefer to use a method with higher fees but with a predictable outcome. If compute nodes always have
     the option to choose a task with deterministic payment, this may effectively make lotteries nonviable.
 
-    It may be also interesting to consider a generalization of the lottery payment protocol that handles
+    It may be also interesting to consider a generalisation of the lottery payment protocol that handles
     lotteries with an arbitrary (but fixed) number of winners. For example, a payment for a task with $1\,000$
     participants could be made with a lottery that has 10 winners, giving each participant $1 / 100$ chance
-    of winning instead of $1 / 1\,000$. Such a generalized lottery would be less expensive than running 10
+    of winning instead of $1 / 1\,000$. Such a generalised lottery would be less expensive than running 10
     separate lotteries for each 100 participants, but would probably require a more complex protocol. This~could
     be a~subject of future work.
     
@@ -1289,15 +1285,15 @@
     if~the~triples in~$P(L)$ are sorted) which~would incur a~substantial cost for~the~sender. Fortunately,
     the~verification may be performed in~the~number of~steps and~with~the~size of~data proportional to~the~logarithm
     of~$N$ by~encoding information in~$P(L)$ in~a~\textbf{Merkle tree}, that~is~a~full binary tree in~which every inner node
-    is~labeled by~the~hash of~the~labels of~its children.
+    is~labelled by~the~hash of~the~labels of~its children.
 
     In the~following we make use of~the~standard identification of~binary trees with~nonempty prefix-closed sets
     of~sequences over~$\{0,1\}$. That is, $T \subseteq \{0,1\}^*$ is~a~binary tree if~$T \neq \empty$ and~for~every
     $n \in \{0,1\}^*$ and~$b \in \{0,1\}$, if~$nb \in T$ then $n \in T$. Here, the~empty sequence is~the
     root of~$T$ and~$n0$ and~$n1$ are the~left and~the~right child of~$s$,respectively.
     $T$ is~\textbf{full} if~every inner node has two children, that~is~if for~every $n \in T$ we have $n0 \in T \iff n1 \in T$.
-    A~\textbf{labeled binary tree} is~a~binary tree $T$ and~a~function $l$ from~$T$ to~some fixed set of~labels.
-    Finally, a~Merkle tree is~a~\textbf{labeled full binary tree} $(T, l)$ with~the~labelling function
+    A~\textbf{labelled binary tree} is~a~binary tree $T$ and~a~function $l$ from~$T$ to~some fixed set of~labels.
+    Finally, a~Merkle tree is~a~\textbf{labelled full binary tree} $(T, l)$ with~the~labelling function
     $l:\; T \rightarrow \{0,1\}^{256}$ satisfying:
     \begin{displaymath}
         l(n) = \hash{l(n0), l(n1)}
@@ -1324,7 +1320,7 @@
     (\cite{SHA3}), finding $n$, $w$ and~$w_1,\,\ldots,\,w_d$ for~which the~above procedure yields the~given
     hash value $h_0$ is~considered extremely difficult. Therefore, for~all practical purposes, proposing the~values
     $n,\,w,\,w_1,\,\ldots,\,w_d$, computing the~hash $h_0$ and~checking that~it is~equal to~the~label in~the~root of
-    a~Merkle tree $T$ is~considered a~valid proof of~$n$ being a~node in~$T$ labeled with~$w$.
+    a~Merkle tree $T$ is~considered a~valid proof of~$n$ being a~node in~$T$ labelled with~$w$.
 
     \begin{figure}
         \include{merkle}
@@ -1338,7 +1334,7 @@
 
 
     Now, going back the~lottery setting, a~Merkle tree for~a~lottery description L is~a~Merkle tree with~minimal height
-    such that~for~every $(a_i, R_i, r_i)$ in~$P(L)$ there exists a~leaf labeled with~$\hash{a_i, R_i, r_i}$.
+    such that~for~every $(a_i, R_i, r_i)$ in~$P(L)$ there exists a~leaf labelled with~$\hash{a_i, R_i, r_i}$.
     This definition allows many different Merkle trees for~a given $L$, so we assume that~all lottery participants
     agree on~a~common algorithm that~builds a~"canonical" tree $M(L)$ for~each $L$, so that~every payee may construct
     $M(L)$ after receiving $L$. Alternatively, the~sender may send a~tree for~$L$ together with~$L$ to~each payee.
